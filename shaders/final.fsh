@@ -5,9 +5,6 @@
 #define TONEMAP
 #define TONEMAP_POWER 3.0
 
-/*
-const int colortex0Format = RGBA16;
-*/
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 layout (location = 0) out vec3 finalColor;
