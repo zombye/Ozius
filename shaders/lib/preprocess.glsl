@@ -1,1 +1,5 @@
+#define PI  3.14159265358979323846
+#define TAU 6.28318530717958647692
+#define PHI 1.61803398874989484820
+
 #define saturate(x) clamp(x, 0.0, 1.0)

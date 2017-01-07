@@ -42,5 +42,5 @@ void main() {
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;
 	texCoord  = vertexUV;
-	lmCoord   = vertexLightmap;
+	lmCoord   = vertexLightmap / 256.0;
 }
