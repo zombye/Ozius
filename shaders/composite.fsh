@@ -4,7 +4,7 @@
 /*
 const int colortex0Format = RGBA16;
 const int colortex1Format = RGBA16;
-const int colortex2Format = RGBA16;
+const int colortex2Format = RGBA32F;
 const int colortex3Format = RGBA16; // Transparent surfaces
 
 const int colortex6Format = RGBA32F;

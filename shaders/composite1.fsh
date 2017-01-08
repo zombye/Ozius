@@ -1,11 +1,7 @@
 #version 400
 
 //--// Configuration //----------------------------------------------------------------------------------//
-/*
-const int colortex0Format = RGBA16;
-const int colortex1Format = RGBA16;
-const int colortex2Format = RGBA16;
-*/
+
 //--// Structs //----------------------------------------------------------------------------------------//
 
 struct materialStruct {
@@ -80,7 +76,15 @@ materialStruct getMaterial(vec2 coord) {
 	return material;
 }
 vec3 getNormal(vec2 coord) {
-	vec4 normal = vec4(texture(colortex2, coord).rg * 2.0 - 1.0, 1.0, -1.0);
+	vec2 unpack = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex2, coord).r));
+	vec4 normal = vec4(unpack * 2.0 - 1.0, 1.0, -1.0);
+	normal.z    = dot(normal.xyz, -normal.xyw);
+	normal.xy  *= sqrt(normal.z);
+	return normal.xyz * 2.0 + vec3(0.0, 0.0, -1.0);
+}
+vec3 getNormalGeom(vec2 coord) {
+	vec2 unpack = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex2, coord).g));
+	vec4 normal = vec4(unpack * 2.0 - 1.0, 1.0, -1.0);
 	normal.z    = dot(normal.xyz, -normal.xyw);
 	normal.xy  *= sqrt(normal.z);
 	return normal.xyz * 2.0 + vec3(0.0, 0.0, -1.0);
@@ -139,29 +143,32 @@ float f0FromIOR(float n) {
 	return n * n;
 }
 
-bool raytraceIntersection(vec3 pos, vec3 vec, out vec2 screenCoord) {
+bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace) {
 	const float maxSteps  = 32;
 	const float stepSize  = 0.5;
-	const float stepScale = 1.5;
+	const float stepScale = 1.6;
 
-	vec3 opos = pos;
 	pos = pos + (vec * stepSize);
 
 	for (uint i = 0; i < maxSteps; i++) {
 		vec3 viewSpace   = pos + (vec * pow(i, stepScale) * stepSize);
-		vec3 screenSpace = viewSpaceToScreenSpace(viewSpace);
+		     screenSpace = viewSpaceToScreenSpace(viewSpace);
 
 		if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5)))) return false;
 
-		vec3 samplePos = screenSpaceToViewSpace(vec3(screenSpace.xy, texture(depthtex1, screenSpace.xy).r));
-		float diff = viewSpace.z - samplePos.z;
+		float screenZ = texture(depthtex1, screenSpace.xy).r;
+		float diff = viewSpace.z - linearizeDepth(screenZ);
 
 		if (diff < 0.0) {
-			vec3 n = getNormal(screenSpace.xy); // todo: don't use normals affected by normal mapping
-			viewSpace += vec * (dot(samplePos - viewSpace, n) / dot(vec, n));
+			vec3 samplePos  = screenSpaceToViewSpace(vec3(screenSpace.xy, screenZ));
+			vec3 sampleNorm = getNormalGeom(screenSpace.xy);
+
+			// Assuming we've found the right plane, this will put the positions exactly where the ray intersects it.
+			viewSpace  += vec * (dot(samplePos - viewSpace, sampleNorm) / dot(vec, sampleNorm));
 			screenSpace = viewSpaceToScreenSpace(viewSpace);
 
-			screenCoord = screenSpace.xy;
+			if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5)))) return false;
+
 			return true;
 		}
 	}
@@ -170,19 +177,19 @@ bool raytraceIntersection(vec3 pos, vec3 vec, out vec2 screenCoord) {
 }
 
 vec3 calculateReflection(surfaceStruct surface) {
-	vec3 viewDir = normalize(surface.positionView[0]);
+	vec3 viewDir = normalize(surface.positionView[1]);
 
 	float skyVis = texture(colortex2, fragCoord).a;
 
 	vec3 reflection = vec3(0.0);
 	const uint samples = 1;
 	for (uint i = 0; i < samples; i++) {
-		vec3 facetNormal = surface.normal;
-		vec3 rayDir = reflect(viewDir, facetNormal);
+		vec3 normal = surface.normal;
+		vec3 rayDir = reflect(viewDir, normal);
 
-		vec2 reflectedCoord;
-		if (raytraceIntersection(surface.positionView[0], rayDir, reflectedCoord)) {
-			reflection += texture(colortex6, reflectedCoord).rgb;
+		vec3 reflectedCoord;
+		if (raytraceIntersection(surface.positionView[1], rayDir, reflectedCoord)) {
+			reflection += texture(colortex6, reflectedCoord.xy).rgb;
 		} else if (skyVis > 0) {
 			reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
 		}

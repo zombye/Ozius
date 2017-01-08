@@ -20,12 +20,17 @@ in vec2 lmCoord;
 uniform float wetness;
 
 uniform sampler2D albedo;
+uniform sampler2D normals;
 uniform sampler2D specular;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
-vec2 packNormal(vec3 normal) {
-	return normal.xy * inversesqrt(normal.z * 8.0 + 8.0) + 0.5;
+vec3 getNormal(vec2 coord) {
+	return tbnMatrix * normalize(texture(normals, coord).rgb * 2.0 - 1.0);
+}
+
+float packNormal(vec3 normal) {
+	return uintBitsToFloat(packUnorm2x16(normal.xy * inversesqrt(normal.z * 8.0 + 8.0) + 0.5));
 }
 
 void main() {
@@ -39,6 +44,7 @@ void main() {
 
 	data0 = albedoTex;
 	data1 = specularTex;
-	data2.xy = packNormal(tbnMatrix[2]);
+	data2.x = packNormal(getNormal(texCoord));
+	data2.y = packNormal(tbnMatrix[2]);
 	data2.zw = lmCoord;
 }
