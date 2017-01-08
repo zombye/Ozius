@@ -49,7 +49,6 @@ uniform mat4 gbufferModelViewInverse;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
-uniform sampler2D colortex2;
 
 uniform sampler2D colortex6; // Previous pass
 uniform sampler2D colortex7; // Sky
@@ -61,34 +60,8 @@ uniform sampler2D depthtex1;
 
 #include "/lib/preprocess.glsl"
 
-materialStruct getMaterial(vec2 coord) {
-	materialStruct material;
-
-	vec4 tex0 = texture(colortex0, coord);
-	vec4 tex1 = texture(colortex1, coord);
-
-	material.albedo    = tex0.rgb;
-	material.specular  = tex1.r;
-	material.metallic  = tex1.g;
-	material.roughness = tex1.b;
-	material.clearcoat = tex1.a;
-
-	return material;
-}
-vec3 getNormal(vec2 coord) {
-	vec2 unpack = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex2, coord).r));
-	vec4 normal = vec4(unpack * 2.0 - 1.0, 1.0, -1.0);
-	normal.z    = dot(normal.xyz, -normal.xyw);
-	normal.xy  *= sqrt(normal.z);
-	return normal.xyz * 2.0 + vec3(0.0, 0.0, -1.0);
-}
-vec3 getNormalGeom(vec2 coord) {
-	vec2 unpack = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex2, coord).g));
-	vec4 normal = vec4(unpack * 2.0 - 1.0, 1.0, -1.0);
-	normal.z    = dot(normal.xyz, -normal.xyw);
-	normal.xy  *= sqrt(normal.z);
-	return normal.xyz * 2.0 + vec3(0.0, 0.0, -1.0);
-}
+#include "/lib/composite/get/material.fsh"
+#include "/lib/composite/get/normal.fsh"
 
 //--//
 
@@ -122,8 +95,6 @@ vec3 getSky(vec3 dir) {
 #include "/lib/reflectanceModels.glsl"
 
 vec3 blendMaterial(vec3 diffuse, vec3 specular, materialStruct material) {
-	diffuse = material.albedo * diffuse;
-
 	vec3 dielectric = specular + diffuse;
 	vec3 metal      = specular * material.albedo;
 
@@ -157,7 +128,7 @@ bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace) {
 		if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5)))) return false;
 
 		float screenZ = texture(depthtex1, screenSpace.xy).r;
-		float diff = viewSpace.z - linearizeDepth(screenZ);
+		float diff    = viewSpace.z - linearizeDepth(screenZ);
 
 		if (diff < 0.0) {
 			vec3 samplePos  = screenSpaceToViewSpace(vec3(screenSpace.xy, screenZ));
@@ -179,7 +150,7 @@ bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace) {
 vec3 calculateReflection(surfaceStruct surface) {
 	vec3 viewDir = normalize(surface.positionView[1]);
 
-	float skyVis = texture(colortex2, fragCoord).a;
+	float skyVis = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a)).y;
 
 	vec3 reflection = vec3(0.0);
 	const uint samples = 1;

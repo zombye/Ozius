@@ -2,6 +2,7 @@
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
+out vec3 vsp;
 out mat3 tbnMatrix;
 out vec4 tint;
 out vec2 texCoord;
@@ -38,6 +39,7 @@ mat3 calculateTBN() {
 
 void main() {
 	gl_Position = gbufferProjection * initPosition();
+	vsp = initPosition().xyz;
 
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;

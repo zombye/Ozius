@@ -2,9 +2,11 @@
 
 //--// Configuration //----------------------------------------------------------------------------------//
 /*
-const int colortex0Format = RGBA16;
-const int colortex1Format = RGBA16;
-const int colortex2Format = RGBA32F;
+const float sunPathRotation = -40.0;
+
+const int colortex0Format = RGBA32F; // Material
+const int colortex1Format = RGBA32F; // Normals, lightmap
+const int colortex2Format = RGBA8;
 const int colortex3Format = RGBA16; // Transparent surfaces
 
 const int colortex6Format = RGBA32F;
@@ -37,6 +39,8 @@ struct surfaceStruct {
 };
 
 struct lightStruct {
+	float pss;
+
 	vec3 block;
 	vec3 sky;
 }light;
@@ -61,7 +65,6 @@ uniform mat4 gbufferModelViewInverse;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
-uniform sampler2D colortex2;
 
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
@@ -70,26 +73,8 @@ uniform sampler2D depthtex1;
 
 #include "/lib/preprocess.glsl"
 
-materialStruct getMaterial(vec2 coord) {
-	materialStruct material;
-
-	vec4 tex0 = texture(colortex0, coord);
-	vec4 tex1 = texture(colortex1, coord);
-
-	material.albedo    = tex0.rgb;
-	material.specular  = tex1.r;
-	material.metallic  = tex1.g;
-	material.roughness = tex1.b;
-	material.clearcoat = tex1.a;
-
-	return material;
-}
-vec3 getNormal(vec2 coord) {
-	vec4 normal = vec4(texture(colortex2, coord).rg * 2.0 - 1.0, 1.0, -1.0);
-	normal.z    = dot(normal.xyz, -normal.xyw);
-	normal.xy  *= sqrt(normal.z);
-	return normal.xyz * 2.0 + vec3(0.0, 0.0, -1.0);
-}
+#include "/lib/composite/get/material.fsh"
+#include "/lib/composite/get/normal.fsh"
 
 //--//
 
@@ -150,7 +135,7 @@ void main() {
 
 	surfaceStruct surface;
 
-	surface.material = getMaterial(fragCoord);
+	surface.material = getMaterial(fragCoord, light.pss);
 
 	surface.normal = getNormal(fragCoord);
 
@@ -166,9 +151,9 @@ void main() {
 	surface.positionLocal[0]  = viewSpaceToLocalSpace(surface.positionView[0]);
 	surface.positionLocal[1]  = viewSpaceToLocalSpace(surface.positionView[1]);
 
-	vec2 lm = texture(colortex2, fragCoord).ba;
+	vec2 lm = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a));
 	light.block = vec3(1.00, 0.50, 0.20) * 16.0 * (lm.x / pow(16 * (1.0625 - lm.x), 2.0));
 	light.sky   = vec3(1.00, 0.95, 0.90) * pow(lm.y, 3.0);
 
-	composite = mix(surface.material.albedo, vec3(0.0), surface.material.metallic) * (light.block + light.sky);
+	composite = mix(surface.material.albedo, vec3(0.0), surface.material.metallic) * (light.block + light.sky + light.pss);
 }

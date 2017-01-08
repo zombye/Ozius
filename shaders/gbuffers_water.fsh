@@ -2,7 +2,7 @@
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS:0 */
+/* DRAWBUFFERS: */
 
 layout (location = 0) out vec4 data0;
 layout (location = 1) out vec4 data1;
@@ -19,6 +19,5 @@ uniform sampler2D albedo;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 void main() {
-	data0 = texture(albedo, texCoord) * tint;
-	data1 = vec4(vec3(1.0), data0.a);
+	discard;
 }

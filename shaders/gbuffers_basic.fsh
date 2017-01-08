@@ -2,11 +2,9 @@
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS:012 */
+/* DRAWBUFFERS:0 */
 
 layout (location = 0) out vec4 data0;
-layout (location = 1) out vec4 data1;
-layout (location = 2) out vec4 data2;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -15,7 +13,8 @@ in vec4 color;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 void main() {
-	data0 = color; data0.a = 1.0;
-	data1 = vec4(0.0);
-	data2 = vec4(1.0);
+	data0.r = uintBitsToFloat(packUnorm4x8(color));
+	data0.g = uintBitsToFloat(0x000000ff);
+	data0.b = uintBitsToFloat(0x000000ff);
+	data0.a = 1.0;
 }
