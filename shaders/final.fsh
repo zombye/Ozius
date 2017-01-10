@@ -2,9 +2,6 @@
 
 //--// Configuration //----------------------------------------------------------------------------------//
 
-#define TONEMAP
-#define TONEMAP_POWER 3.0
-
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 layout (location = 0) out vec3 finalColor;
@@ -20,9 +17,9 @@ uniform sampler2D colortex0;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 void tonemap(inout vec3 color) {
-	color  = pow(color, vec3(TONEMAP_POWER));
+	color *= color;
 	color /= color + 1.0;
-	color = pow(color, vec3(1.0 / TONEMAP_POWER));
+	color  = pow(color, vec3(0.5 / 2.2));
 }
 void dither(inout vec3 color) {
 	const mat4 pattern = mat4(
@@ -40,8 +37,6 @@ void dither(inout vec3 color) {
 void main() {
 	finalColor = texture(colortex0, fragCoord).rgb;
 
-	#ifdef TONEMAP
 	tonemap(finalColor);
-	#endif
 	dither(finalColor);
 }
