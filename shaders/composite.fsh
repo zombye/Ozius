@@ -3,6 +3,7 @@
 //--// Configuration //----------------------------------------------------------------------------------//
 /*
 const float sunPathRotation = -40.0;
+const float shadowDistance = 64.0;
 
 const int colortex0Format = RGBA32F; // Material
 const int colortex1Format = RGBA32F; // Normals, lightmap
@@ -11,6 +12,8 @@ const int colortex3Format = RGBA16; // Transparent surfaces
 
 const int colortex6Format = RGBA32F;
 const int colortex7Format = RGBA32F; // Sky
+
+const bool shadowHardwareFiltering0 = true;
 */
 //--// Structs //----------------------------------------------------------------------------------------//
 
@@ -30,6 +33,7 @@ struct surfaceStruct {
 	materialStruct material;
 
 	vec3 normal;
+	vec3 normalGeom;
 
 	vec4 depth; // x = depth0, y = depth1 (depth0 without transparent objects). zw = linearized xy
 
@@ -38,11 +42,17 @@ struct surfaceStruct {
 	mat2x3 positionLocal;  // Position in local-space
 };
 
-struct lightStruct {
-	float pss;
-
+struct engineLightStruct {
+	vec2 raw;
 	vec3 block;
 	vec3 sky;
+};
+
+struct lightStruct {
+	engineLightStruct engine;
+
+	float pss;
+	float shadow;
 }light;
 
 //--// Outputs //----------------------------------------------------------------------------------------//
@@ -63,11 +73,14 @@ uniform vec3 shadowLightPosition;
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
 
+uniform mat4 shadowProjection, shadowModelView;
+
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
 
-uniform sampler2D depthtex0;
-uniform sampler2D depthtex1;
+uniform sampler2D depthtex0, depthtex1;
+
+uniform sampler2DShadow shadowtex0;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -130,6 +143,33 @@ vec3 calculateSky(vec2 coord) {
 
 //--//
 
+engineLightStruct getEngineLight(vec2 coord) {
+	engineLightStruct engine;
+
+	engine.raw   = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a));
+	engine.block = vec3(1.00, 0.50, 0.20) * 16.0 * (engine.raw.x / pow(16 * (1.0625 - engine.raw.x), 2.0));
+	engine.sky   = vec3(1.00, 0.95, 0.90) * pow(engine.raw.y, 3.0);
+
+	return engine;
+}
+
+float calculateShadows(vec3 positionLocal, vec3 normal) {
+	vec3 shadowCoord = (shadowProjection * shadowModelView * vec4(positionLocal, 1.0)).xyz;
+
+	float NoL = dot(normalize(shadowLightPosition), normal);
+
+	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex0, 0).x) * shadowProjection[2].z;
+	zBias *= tan(acos(abs(NoL)));
+
+	shadowCoord.z += zBias;
+
+	shadowCoord = shadowCoord * 0.5 + 0.5;
+
+	return texture(shadowtex0, shadowCoord);
+}
+
+//--//
+
 void main() {
 	sky = calculateSky(fragCoord);
 
@@ -137,7 +177,8 @@ void main() {
 
 	surface.material = getMaterial(fragCoord, light.pss);
 
-	surface.normal = getNormal(fragCoord);
+	surface.normal     = getNormal(fragCoord);
+	surface.normalGeom = getNormalGeom(fragCoord);
 
 	surface.depth.x = texture(depthtex0, fragCoord).r;
 	surface.depth.y = texture(depthtex1, fragCoord).r;
@@ -151,9 +192,8 @@ void main() {
 	surface.positionLocal[0]  = viewSpaceToLocalSpace(surface.positionView[0]);
 	surface.positionLocal[1]  = viewSpaceToLocalSpace(surface.positionView[1]);
 
-	vec2 lm = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a));
-	light.block = vec3(1.00, 0.50, 0.20) * 16.0 * (lm.x / pow(16 * (1.0625 - lm.x), 2.0));
-	light.sky   = vec3(1.00, 0.95, 0.90) * pow(lm.y, 3.0);
+	light.engine = getEngineLight(fragCoord);
+	light.shadow = calculateShadows(surface.positionLocal[1], surface.normalGeom);
 
-	composite = mix(surface.material.albedo, vec3(0.0), surface.material.metallic) * (light.block + light.sky + light.pss);
+	composite = mix(surface.material.albedo, vec3(0.0), surface.material.metallic) * (light.engine.block + light.engine.sky + (light.shadow * light.pss));
 }

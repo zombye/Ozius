@@ -10,7 +10,7 @@
 
 /* DRAWBUFFERS:01 */
 
-layout (location = 0) out vec4 data0;
+layout (location = 0) out vec4 packedMaterial;
 layout (location = 1) out vec4 data1;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
@@ -24,8 +24,6 @@ in vec2 lmCoord;
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
 uniform vec3 shadowLightPosition;
-
-uniform float wetness;
 
 uniform sampler2D albedo;
 uniform sampler2D normals;
@@ -96,10 +94,10 @@ void main() {
 
 	float parallaxShadow = calculateParallaxSelfShadow(pCoord, normalize(shadowLightPosition * tbnMatrix));
 
-	data0.r = uintBitsToFloat(packUnorm4x8(vec4(albedoTex.rgb, parallaxShadow)));
-	data0.g = uintBitsToFloat(packUnorm4x8(specularTex));
-	data0.b = uintBitsToFloat(packUnorm4x8(vec4(0.0, 0.0, 0.0, 1.0)));
-	data0.a = albedoTex.a;
+	packedMaterial.r = uintBitsToFloat(packUnorm4x8(vec4(albedoTex.rgb, parallaxShadow)));
+	packedMaterial.g = uintBitsToFloat(packUnorm4x8(specularTex));
+	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(0.0, 0.0, 0.0, 1.0)));
+	packedMaterial.a = albedoTex.a;
 
 	data1.r = packNormal(getNormal(pCoord.st));
 	data1.g = packNormal(tbnMatrix[2]);
