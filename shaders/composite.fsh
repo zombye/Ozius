@@ -1,19 +1,25 @@
-#version 400
+#version 420
 
 //--// Configuration //----------------------------------------------------------------------------------//
 /*
 const float sunPathRotation = -40.0;
-const float shadowDistance = 64.0;
+
+//--// Shadows
+
+const int   shadowMapResolution = 2048; // [1024 2048 4096]
+const float shadowDistance      = 16.0;
+
+//--// Texture formats
 
 const int colortex0Format = RGBA32F; // Material
 const int colortex1Format = RGBA32F; // Normals, lightmap
-const int colortex2Format = RGBA8;
-const int colortex3Format = RGBA16; // Transparent surfaces
+const int colortex2Format = RGBA32F; // Transparent surfaces
 
 const int colortex6Format = RGBA32F;
 const int colortex7Format = RGBA32F; // Sky
 
 const bool shadowHardwareFiltering0 = true;
+const bool shadowHardwareFiltering1 = true;
 */
 //--// Structs //----------------------------------------------------------------------------------------//
 
@@ -47,13 +53,12 @@ struct engineLightStruct {
 	vec3 block;
 	vec3 sky;
 };
-
 struct lightStruct {
 	engineLightStruct engine;
 
 	float pss;
 	float shadow;
-}light;
+};
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
@@ -68,6 +73,8 @@ in vec2 fragCoord;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
+uniform float shadowAngle;
+
 uniform vec3 shadowLightPosition;
 
 uniform mat4 gbufferProjectionInverse;
@@ -75,16 +82,20 @@ uniform mat4 gbufferModelViewInverse;
 
 uniform mat4 shadowProjection, shadowModelView;
 
-uniform sampler2D colortex0;
-uniform sampler2D colortex1;
+uniform sampler2D colortex0, colortex1;
 
 uniform sampler2D depthtex0, depthtex1;
 
 uniform sampler2DShadow shadowtex0;
+uniform sampler2DShadow shadowtex1;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
+
+#include "/lib/util/packing/normal.glsl"
+
+//--//
 
 #include "/lib/composite/get/material.fsh"
 #include "/lib/composite/get/normal.fsh"
@@ -156,16 +167,24 @@ engineLightStruct getEngineLight(vec2 coord) {
 float calculateShadows(vec3 positionLocal, vec3 normal) {
 	vec3 shadowCoord = (shadowProjection * shadowModelView * vec4(positionLocal, 1.0)).xyz;
 
-	float NoL = dot(normalize(shadowLightPosition), normal);
+	float distortCoeff = 1.0 + length(shadowCoord.xy);
 
 	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex0, 0).x) * shadowProjection[2].z;
-	zBias *= tan(acos(abs(NoL)));
+	zBias *= tan(acos(abs(dot(normalize(shadowLightPosition), normal))));
+	zBias *= distortCoeff * distortCoeff;
+	zBias *= mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
+	zBias -= 0.0001 * mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
 
 	shadowCoord.z += zBias;
 
+	shadowCoord.xy /= distortCoeff;
+	shadowCoord.z *= 0.25;
+
 	shadowCoord = shadowCoord * 0.5 + 0.5;
 
-	return texture(shadowtex0, shadowCoord);
+	float shadow = texture(shadowtex1, shadowCoord);
+
+	return shadow * shadow;
 }
 
 //--//
@@ -174,6 +193,7 @@ void main() {
 	sky = calculateSky(fragCoord);
 
 	surfaceStruct surface;
+	lightStruct   light;
 
 	surface.material = getMaterial(fragCoord, light.pss);
 

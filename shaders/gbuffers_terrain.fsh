@@ -18,21 +18,21 @@ layout (location = 1) out vec4 data1;
 in vec3 vsp;
 in mat3 tbnMatrix;
 in vec4 tint;
-in vec2 texCoord;
-in vec2 lmCoord;
+in vec2 baseUV;
+in vec2 lmUV;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
 uniform vec3 shadowLightPosition;
 
-uniform sampler2D albedo;
+uniform sampler2D base;
 uniform sampler2D normals;
 uniform sampler2D specular;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
 vec3 calculateParallaxCoord(vec2 coord, vec3 dir) {
-	vec2 atlasTiles = textureSize(albedo, 0) / TEXTURE_RESOLUTION;
+	vec2 atlasTiles = textureSize(base, 0) / TEXTURE_RESOLUTION;
 	vec4 tcoord = vec4(fract(coord * atlasTiles), floor(coord * atlasTiles));
 
 	vec3 increment = vec3(0.25, -0.25, 1.0) * (dir / abs(dir.z)) * 0.0625;
@@ -58,7 +58,7 @@ float calculateParallaxSelfShadow(vec3 coord, vec3 dir) {
 	#elif PSS_QUALITY == 3
 	const int steps = 64;
 	#endif
-	const vec2 atlasTiles = textureSize(albedo, 0) / TEXTURE_RESOLUTION;
+	const vec2 atlasTiles = textureSize(base, 0) / TEXTURE_RESOLUTION;
 
 	vec4 tcoord = vec4(fract(coord.xy * atlasTiles), floor(coord.xy * atlasTiles));
 
@@ -77,30 +77,30 @@ float calculateParallaxSelfShadow(vec3 coord, vec3 dir) {
 }
 
 vec3 getNormal(vec2 coord) {
-	return tbnMatrix * normalize(texture(normals, coord).rgb * 2.0 - 1.0);
+	vec3 tsn = texture(normals, coord).rgb;
+	tsn.xy += 0.5 / 255.0; // Need to add this for correct results.
+	return tbnMatrix * normalize(tsn * 2.0 - 1.0);
 }
 
-float packNormal(vec3 normal) {
-	return uintBitsToFloat(packUnorm2x16(normal.xy * inversesqrt(normal.z * 8.0 + 8.0) + 0.5));
-}
+#include "/lib/util/packing/normal.glsl"
 
 void main() {
-	vec3 pCoord = calculateParallaxCoord(texCoord, normalize(vsp) * tbnMatrix);
+	vec3 pCoord = calculateParallaxCoord(baseUV, normalize(vsp) * tbnMatrix);
 
-	vec4 albedoTex = texture(albedo, pCoord.st) * tint;
-	if (albedoTex.a < 0.102) discard; // ~ 26 / 255
+	vec4 albedo = texture(base, pCoord.st) * tint;
+	if (albedo.a < 0.102) discard; // ~ 26 / 255
 
-	vec4 specularTex = texture(specular, pCoord.st);
+	vec4 spec = texture(specular, pCoord.st);
 
 	float parallaxShadow = calculateParallaxSelfShadow(pCoord, normalize(shadowLightPosition * tbnMatrix));
 
-	packedMaterial.r = uintBitsToFloat(packUnorm4x8(vec4(albedoTex.rgb, parallaxShadow)));
-	packedMaterial.g = uintBitsToFloat(packUnorm4x8(specularTex));
+	packedMaterial.r = uintBitsToFloat(packUnorm4x8(vec4(albedo.rgb, parallaxShadow)));
+	packedMaterial.g = uintBitsToFloat(packUnorm4x8(spec));
 	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(0.0, 0.0, 0.0, 1.0)));
-	packedMaterial.a = albedoTex.a;
+	packedMaterial.a = 1.0;
 
 	data1.r = packNormal(getNormal(pCoord.st));
 	data1.g = packNormal(tbnMatrix[2]);
 	data1.b = 1.0;
-	data1.a = uintBitsToFloat(packUnorm2x16(lmCoord));
+	data1.a = uintBitsToFloat(packUnorm2x16(lmUV));
 }

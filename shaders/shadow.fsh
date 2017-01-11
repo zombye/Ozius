@@ -2,16 +2,22 @@
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-out vec2 fragCoord;
+/* DRAWBUFFERS:0 */
+
+layout (location = 0) out vec4 color;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
-layout (location = 0) in vec4 vertexPosition;
+in vec4 tint;
+in vec2 baseUV;
+
+//--// Uniforms //---------------------------------------------------------------------------------------//
+
+uniform sampler2D base;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
 void main() {
-	gl_Position = vertexPosition * 2.0 - 1.0;
-
-	fragCoord = vertexPosition.xy;
+	color = texture(base, baseUV) * tint;
+	if (color.a < 0.102) discard; // ~ 26 / 255
 }

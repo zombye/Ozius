@@ -1,12 +1,12 @@
-#version 400 compatibility
+#version 420 compatibility
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 out vec3 vsp;
 out mat3 tbnMatrix;
 out vec4 tint;
-out vec2 texCoord;
-out vec2 lmCoord;
+out vec2 baseUV;
+out vec2 lmUV;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -38,11 +38,12 @@ mat3 calculateTBN() {
 }
 
 void main() {
-	gl_Position = gbufferProjection * initPosition();
-	vsp = initPosition().xyz;
+	gl_Position = initPosition();
+	vsp = gl_Position.xyz;
+	gl_Position = gbufferProjection * gl_Position;
 
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;
-	texCoord  = vertexUV;
-	lmCoord   = vertexLightmap / 256.0;
+	baseUV    = vertexUV;
+	lmUV      = vertexLightmap / 256.0;
 }

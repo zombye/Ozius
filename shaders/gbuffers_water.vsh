@@ -1,9 +1,9 @@
-#version 400 compatibility
+#version 420 compatibility
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 out vec4 tint;
-out vec2 texCoord;
+out vec2 baseUV;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -19,6 +19,6 @@ vec4 initPosition() {
 void main() {
 	gl_Position = gl_ProjectionMatrix * initPosition();
 
-	tint     = vertexColor;
-	texCoord = vertexUV;
+	tint   = vertexColor;
+	baseUV = vertexUV;
 }

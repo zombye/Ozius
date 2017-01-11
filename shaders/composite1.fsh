@@ -1,4 +1,4 @@
-#version 400
+#version 420
 
 //--// Configuration //----------------------------------------------------------------------------------//
 
@@ -20,6 +20,7 @@ struct surfaceStruct {
 	materialStruct material;
 
 	vec3 normal;
+	vec3 normalGeom;
 
 	vec4 depth; // x = depth0, y = depth1 (depth0 without transparent objects). zw = linearized xy
 
@@ -59,6 +60,10 @@ uniform sampler2D depthtex1;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
+
+#include "/lib/util/packing/normal.glsl"
+
+//--//
 
 #include "/lib/composite/get/material.fsh"
 #include "/lib/composite/get/normal.fsh"
@@ -194,7 +199,8 @@ void main() {
 
 	surface.material = getMaterial(fragCoord);
 
-	surface.normal = getNormal(fragCoord);
+	surface.normal     = getNormal(fragCoord);
+	surface.normalGeom = getNormalGeom(fragCoord);
 
 	float NoV = dot(surface.normal, -normalize(surface.positionView[0]));
 
