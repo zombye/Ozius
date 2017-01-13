@@ -32,7 +32,7 @@ mat3 calculateTBN() {
 
 	return mat3(
 		gl_NormalMatrix * tangent,
-		gl_NormalMatrix * cross(vertexNormal, tangent) * sign(vertexTangent.w),
+		gl_NormalMatrix * cross(tangent, vertexNormal) * sign(vertexTangent.w),
 		gl_NormalMatrix * vertexNormal
 	);
 }

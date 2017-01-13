@@ -2,6 +2,8 @@
 
 //--// Configuration //----------------------------------------------------------------------------------//
 
+#include "/cfg/global.scfg"
+
 //--// Structs //----------------------------------------------------------------------------------------//
 
 struct materialStruct {
@@ -48,14 +50,13 @@ uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
 
-uniform sampler2D colortex0;
-uniform sampler2D colortex1;
+uniform sampler2D colortex0, colortex1;
+uniform sampler2D colortex2;
 
 uniform sampler2D colortex6; // Previous pass
 uniform sampler2D colortex7; // Sky
 
-uniform sampler2D depthtex0;
-uniform sampler2D depthtex1;
+uniform sampler2D depthtex0, depthtex1;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -98,13 +99,6 @@ vec3 getSky(vec3 dir) {
 //--//
 
 #include "/lib/reflectanceModels.glsl"
-
-vec3 blendMaterial(vec3 diffuse, vec3 specular, materialStruct material) {
-	vec3 dielectric = specular + diffuse;
-	vec3 metal      = specular * material.albedo;
-
-	return mix(dielectric, metal, material.metallic);
-}
 
 float f0ToIOR(float f0) {
 	f0 = sqrt(f0);
@@ -163,11 +157,15 @@ vec3 calculateReflection(surfaceStruct surface) {
 		vec3 normal = surface.normal;
 		vec3 rayDir = reflect(viewDir, normal);
 
+		float NoI = dot(normal, rayDir);
+		float NoO = dot(normal, viewDir);
+		vec3 mul = mix(vec3(1.0), surface.material.albedo, surface.material.metallic) * f_schlick(NoI, NoO, surface.material.specular);
+
 		vec3 reflectedCoord;
 		if (raytraceIntersection(surface.positionView[1], rayDir, reflectedCoord)) {
-			reflection += texture(colortex6, reflectedCoord.xy).rgb;
+			reflection += texture(colortex6, reflectedCoord.xy).rgb * mul;
 		} else if (skyVis > 0) {
-			reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
+			reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis * mul;
 		}
 	}
 
@@ -189,8 +187,9 @@ void main() {
 	surface.positionLocal[0]  = viewSpaceToLocalSpace(surface.positionView[0]);
 	surface.positionLocal[1]  = viewSpaceToLocalSpace(surface.positionView[1]);
 
-	if (surface.depth.x == 1.0) {
-		composite = getSky(normalize(surface.positionLocal[0].xzy));
+	if (surface.depth.y == 1.0) {
+		vec4 trans = texture(colortex2, fragCoord);
+		composite = mix(getSky(normalize(surface.positionLocal[0].xzy)), trans.rgb, trans.a);
 		return;
 	}
 
@@ -202,10 +201,12 @@ void main() {
 	surface.normal     = getNormal(fragCoord);
 	surface.normalGeom = getNormalGeom(fragCoord);
 
-	float NoV = dot(surface.normal, -normalize(surface.positionView[0]));
+	float NoI = dot(surface.normal, normalize(shadowLightPosition));
+	float NoO = dot(surface.normal, -normalize(surface.positionView[0]));
 
-	composite = texture(colortex6, fragCoord).rgb * (1.0 - f_schlick(NoV, surface.material.specular));
-	vec3 reflection = calculateReflection(surface) * f_schlick(NoV, surface.material.specular);
+	composite = texture(colortex6, fragCoord).rgb * (1.0 - f_schlick(NoI, NoO, surface.material.specular));
+	composite += calculateReflection(surface);
 
-	composite = blendMaterial(composite, reflection, surface.material);
+	vec4 trans = texture(colortex2, fragCoord);
+	composite = mix(composite, trans.rgb, trans.a);
 }

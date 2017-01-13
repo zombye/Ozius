@@ -2,6 +2,8 @@
 
 //--// Configuration //----------------------------------------------------------------------------------//
 
+#include "/cfg/global.scfg"
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 layout (location = 0) out vec3 finalColor;
@@ -19,7 +21,7 @@ uniform sampler2D colortex0;
 void tonemap(inout vec3 color) {
 	color *= color;
 	color /= color + 1.0;
-	color  = pow(color, vec3(0.5 / 2.2));
+	color  = pow(color, vec3(0.5 / GAMMA));
 }
 void dither(inout vec3 color) {
 	const mat4 pattern = mat4(

@@ -2,10 +2,9 @@
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS: */
+/* DRAWBUFFERS:2 */
 
 layout (location = 0) out vec4 data0;
-layout (location = 1) out vec4 data1;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -19,5 +18,7 @@ uniform sampler2D base;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 void main() {
-	discard;
+	data0 = texture(base, baseUV) * tint;
+
+	if (data0.a == 0.0) discard;
 }

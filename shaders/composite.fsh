@@ -1,16 +1,20 @@
 #version 420
 
 //--// Configuration //----------------------------------------------------------------------------------//
-/*
+
+#include "/cfg/global.scfg"
+
+//--// Misc
+
 const float sunPathRotation = -40.0;
 
 //--// Shadows
 
 const int   shadowMapResolution = 2048; // [1024 2048 4096]
-const float shadowDistance      = 16.0;
+const float shadowDistance      = 16.0; // [16.0 32.0]
 
 //--// Texture formats
-
+/*
 const int colortex0Format = RGBA32F; // Material
 const int colortex1Format = RGBA32F; // Normals, lightmap
 const int colortex2Format = RGBA32F; // Transparent surfaces
@@ -84,7 +88,7 @@ uniform mat4 shadowProjection, shadowModelView;
 
 uniform sampler2D colortex0, colortex1;
 
-uniform sampler2D depthtex0, depthtex1;
+uniform sampler2D depthtex1;
 
 uniform sampler2DShadow shadowtex0;
 uniform sampler2DShadow shadowtex1;
@@ -173,7 +177,7 @@ float calculateShadows(vec3 positionLocal, vec3 normal) {
 	zBias *= tan(acos(abs(dot(normalize(shadowLightPosition), normal))));
 	zBias *= distortCoeff * distortCoeff;
 	zBias *= mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
-	zBias -= 0.0001 * mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
+	zBias -= (0.0059 / shadowDistance) * SQRT2;
 
 	shadowCoord.z += zBias;
 
@@ -193,6 +197,17 @@ void main() {
 	sky = calculateSky(fragCoord);
 
 	surfaceStruct surface;
+
+	surface.depth.y = texture(depthtex1, fragCoord).r;
+
+	if (surface.depth.y == 1.0) return;
+
+	surface.positionScreen[1] = vec3(fragCoord, surface.depth.y);
+	surface.positionView[1]   = screenSpaceToViewSpace(surface.positionScreen[1]);
+	surface.positionLocal[1]  = viewSpaceToLocalSpace(surface.positionView[1]);
+
+	surface.depth.w = surface.positionView[1].z;
+
 	lightStruct   light;
 
 	surface.material = getMaterial(fragCoord, light.pss);
@@ -200,20 +215,15 @@ void main() {
 	surface.normal     = getNormal(fragCoord);
 	surface.normalGeom = getNormalGeom(fragCoord);
 
-	surface.depth.x = texture(depthtex0, fragCoord).r;
-	surface.depth.y = texture(depthtex1, fragCoord).r;
-	surface.depth.z = linearizeDepth(surface.depth.x);
-	surface.depth.w = linearizeDepth(surface.depth.y);
-
-	surface.positionScreen[0] = vec3(fragCoord, surface.depth.x);
-	surface.positionScreen[1] = vec3(fragCoord, surface.depth.y);
-	surface.positionView[0]   = screenSpaceToViewSpace(surface.positionScreen[0]);
-	surface.positionView[1]   = screenSpaceToViewSpace(surface.positionScreen[1]);
-	surface.positionLocal[0]  = viewSpaceToLocalSpace(surface.positionView[0]);
-	surface.positionLocal[1]  = viewSpaceToLocalSpace(surface.positionView[1]);
+	//--//
 
 	light.engine = getEngineLight(fragCoord);
-	light.shadow = calculateShadows(surface.positionLocal[1], surface.normalGeom);
+
+	if (light.pss > 0.0) {
+		light.shadow = calculateShadows(surface.positionLocal[1], surface.normalGeom);
+	} else {
+		light.shadow = 0.0;
+	}
 
 	composite = mix(surface.material.albedo, vec3(0.0), surface.material.metallic) * (light.engine.block + light.engine.sky + (light.shadow * light.pss));
 }

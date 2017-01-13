@@ -14,7 +14,7 @@ in vec4 color;
 
 void main() {
 	packedMaterial.r = uintBitsToFloat(packUnorm4x8(color));
-	packedMaterial.g = uintBitsToFloat(0x000000ff);
-	packedMaterial.b = uintBitsToFloat(0x000000ff);
+	packedMaterial.g = uintBitsToFloat(0xff000000);
+	packedMaterial.b = uintBitsToFloat(0xff000000);
 	packedMaterial.a = 1.0;
 }
