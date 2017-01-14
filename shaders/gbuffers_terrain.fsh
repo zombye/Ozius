@@ -19,7 +19,8 @@ layout (location = 1) out vec4 data1;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
-in vec3 vsp;
+in vec3 positionView;
+
 in mat3 tbnMatrix;
 in vec4 tint;
 in vec2 baseUV;
@@ -64,7 +65,7 @@ vec3 calculateParallaxCoord(vec2 coord, vec3 dir) {
 	}
 
 	#ifdef PM_DEPTH_WRITE
-	gl_FragDepth = delinearizeDepth(vsp.z + (normalize(vsp).z * length(vec3(offset.xy, offset.z * PM_DEPTH - PM_DEPTH))));
+	gl_FragDepth = delinearizeDepth(positionView.z + (normalize(positionView).z * length(vec3(offset.xy, offset.z * PM_DEPTH - PM_DEPTH))));
 	#endif
 
 	return vec3((fract(tcoord.xy + offset.xy) + tcoord.zw) / atlasTiles, offset.z);
@@ -111,7 +112,7 @@ vec3 getNormal(vec2 coord) {
 #include "/lib/util/packing/normal.glsl"
 
 void main() {
-	vec3 pCoord = calculateParallaxCoord(baseUV, normalize(vsp) * tbnMatrix);
+	vec3 pCoord = calculateParallaxCoord(baseUV, normalize(positionView) * tbnMatrix);
 
 	vec4 albedo = texture(base, pCoord.st) * tint;
 	if (albedo.a < 0.102) discard; // ~ 26 / 255

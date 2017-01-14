@@ -18,6 +18,7 @@ const float shadowDistance      = 16.0; // [16.0 32.0]
 const int colortex0Format = RGBA32F; // Material
 const int colortex1Format = RGBA32F; // Normals, lightmap
 const int colortex2Format = RGBA32F; // Transparent surfaces
+const int colortex3Format = RGBA32F; // Water data
 
 const int colortex6Format = RGBA32F;
 const int colortex7Format = RGBA32F; // Sky
@@ -91,7 +92,6 @@ uniform sampler2D colortex0, colortex1;
 uniform sampler2D depthtex1;
 
 uniform sampler2DShadow shadowtex0;
-uniform sampler2DShadow shadowtex1;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -158,38 +158,8 @@ vec3 calculateSky(vec2 coord) {
 
 //--//
 
-engineLightStruct getEngineLight(vec2 coord) {
-	engineLightStruct engine;
-
-	engine.raw   = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a));
-	engine.block = vec3(1.00, 0.50, 0.20) * 16.0 * (engine.raw.x / pow(16 * (1.0625 - engine.raw.x), 2.0));
-	engine.sky   = vec3(1.00, 0.95, 0.90) * pow(engine.raw.y, 3.0);
-
-	return engine;
-}
-
-float calculateShadows(vec3 positionLocal, vec3 normal) {
-	vec3 shadowCoord = (shadowProjection * shadowModelView * vec4(positionLocal, 1.0)).xyz;
-
-	float distortCoeff = 1.0 + length(shadowCoord.xy);
-
-	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex0, 0).x) * shadowProjection[2].z;
-	zBias *= tan(acos(abs(dot(normalize(shadowLightPosition), normal))));
-	zBias *= distortCoeff * distortCoeff;
-	zBias *= mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
-	zBias -= (0.0059 / shadowDistance) * SQRT2;
-
-	shadowCoord.z += zBias;
-
-	shadowCoord.xy /= distortCoeff;
-	shadowCoord.z *= 0.25;
-
-	shadowCoord = shadowCoord * 0.5 + 0.5;
-
-	float shadow = texture(shadowtex1, shadowCoord);
-
-	return shadow * shadow;
-}
+#include "/lib/light/engine.fsh"
+#include "/lib/light/shadow.fsh"
 
 //--//
 
@@ -208,7 +178,7 @@ void main() {
 
 	surface.depth.w = surface.positionView[1].z;
 
-	lightStruct   light;
+	lightStruct light;
 
 	surface.material = getMaterial(fragCoord, light.pss);
 
@@ -217,10 +187,10 @@ void main() {
 
 	//--//
 
-	light.engine = getEngineLight(fragCoord);
+	light.engine = calculateEngineLight(unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a)));
 
 	if (light.pss > 0.0) {
-		light.shadow = calculateShadows(surface.positionLocal[1], surface.normalGeom);
+		light.shadow = calculateShadow(surface.positionLocal[1], surface.normalGeom);
 	} else {
 		light.shadow = 0.0;
 	}

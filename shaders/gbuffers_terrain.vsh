@@ -2,7 +2,8 @@
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-out vec3 vsp;
+out vec3 positionView;
+
 out mat3 tbnMatrix;
 out vec4 tint;
 out vec2 baseUV;
@@ -23,9 +24,7 @@ uniform mat4 gbufferProjection;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
-vec4 initPosition() {
-	return gl_ModelViewMatrix * vertexPosition;
-}
+#include "/lib/gbuffers/initPosition.vsh"
 
 mat3 calculateTBN() {
 	vec3 tangent = normalize(vertexTangent.xyz);
@@ -39,8 +38,8 @@ mat3 calculateTBN() {
 
 void main() {
 	gl_Position = initPosition();
-	vsp = gl_Position.xyz;
-	gl_Position = gbufferProjection * gl_Position;
+	positionView = gl_Position.xyz;
+	gl_Position = gl_ProjectionMatrix * gl_Position;
 
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;

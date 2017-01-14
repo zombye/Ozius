@@ -51,7 +51,7 @@ uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
 
 uniform sampler2D colortex0, colortex1;
-uniform sampler2D colortex2;
+uniform sampler2D colortex2, colortex3; // Transparent surfaces
 
 uniform sampler2D colortex6; // Previous pass
 uniform sampler2D colortex7; // Sky
@@ -172,6 +172,37 @@ vec3 calculateReflection(surfaceStruct surface) {
 	return reflection / samples;
 }
 
+vec3 calculateWaterShading(surfaceStruct surface) {
+	vec3 waterShading = vec3(0.0);
+
+	vec4 tex3Raw = textureRaw(colortex3, fragCoord);
+	if (tex3Raw.a == 0.0) return waterShading;
+
+	vec3 viewDir = normalize(surface.positionView[0]);
+
+	vec3  normal = unpackNormal(tex3Raw.r);
+	float skyVis = tex3Raw.b;
+
+	// Reflections
+	vec3 reflection;
+	{
+		vec3 rayDir = reflect(viewDir, normal);
+
+		vec3 reflectedCoord;
+		if (raytraceIntersection(surface.positionView[0], rayDir, reflectedCoord)) {
+			reflection = texture(colortex6, reflectedCoord.xy).rgb;
+		} else if (skyVis > 0) {
+			reflection = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
+		}
+
+		reflection *= f_schlick(dot(normal, viewDir), dot(normal, rayDir), 0.02);
+	}
+
+	waterShading += reflection;
+
+	return waterShading;
+}
+
 //--//
 
 void main() {
@@ -208,5 +239,8 @@ void main() {
 	composite += calculateReflection(surface);
 
 	vec4 trans = texture(colortex2, fragCoord);
+
+	trans.rgb += calculateWaterShading(surface);
+
 	composite = mix(composite, trans.rgb, trans.a);
 }

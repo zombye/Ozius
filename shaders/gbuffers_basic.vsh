@@ -11,16 +11,14 @@ layout (location = 3) in vec4 vertexColor;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform mat4 gbufferProjection;
+//uniform mat4 gbufferProjection;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
-vec4 initPosition() {
-	return gl_ModelViewMatrix * vertexPosition;
-}
+#include "/lib/gbuffers/initPosition.vsh"
 
 void main() {
-	gl_Position = gbufferProjection * initPosition();
+	gl_Position = gl_ProjectionMatrix * initPosition();
 
 	color = vertexColor;
 }

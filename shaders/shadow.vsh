@@ -13,16 +13,14 @@ layout (location = 8)  in vec2 vertexUV;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform mat4 shadowProjection, shadowModelView;
+//uniform mat4 shadowProjection;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
-vec4 initPosition() {
-	return gl_ModelViewMatrix * vertexPosition;
-}
+#include "/lib/gbuffers/initPosition.vsh"
 
 void main() {
-	gl_Position     = shadowProjection * initPosition();
+	gl_Position     = gl_ProjectionMatrix * initPosition();
 	gl_Position.xy /= 1.0 + length(gl_Position.xy);
 	gl_Position.z  *= 0.25;
 
