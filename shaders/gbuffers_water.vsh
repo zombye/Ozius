@@ -2,11 +2,14 @@
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
+out vec3 positionView;
 out vec3 positionLocal;
 
 out mat3 tbnMatrix;
 out vec4 tint;
 out vec2 baseUV, lmUV;
+
+out float blockID;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -15,6 +18,7 @@ layout (location = 2)  in vec3 vertexNormal;
 layout (location = 3)  in vec4 vertexColor;
 layout (location = 8)  in vec2 vertexUV;
 layout (location = 9)  in vec2 vertexLightmap;
+layout (location = 10) in vec4 vertexMetadata;
 layout (location = 12) in vec4 vertexTangent;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
@@ -38,6 +42,7 @@ mat3 calculateTBN() {
 
 void main() {
 	gl_Position = initPosition();
+	positionView  = gl_Position.xyz;
 	positionLocal = (gbufferModelViewInverse * gl_Position).xyz;
 	gl_Position = gl_ProjectionMatrix * gl_Position;
 
@@ -45,4 +50,6 @@ void main() {
 	tint      = vertexColor;
 	baseUV    = vertexUV;
 	lmUV      = vertexLightmap / 256.0;
+
+	blockID = vertexMetadata.x;
 }

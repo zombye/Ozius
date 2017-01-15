@@ -43,6 +43,8 @@ in vec2 fragCoord;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
+uniform int isEyeInWater;
+
 uniform vec3 shadowLightPosition;
 uniform vec3 upPosition;
 
@@ -172,21 +174,25 @@ vec3 calculateReflection(surfaceStruct surface) {
 	return reflection / samples;
 }
 
-vec3 calculateWaterShading(surfaceStruct surface) {
-	vec3 waterShading = vec3(0.0);
+//--//
 
+vec3 calculateWaterShading(surfaceStruct surface) {
 	vec4 tex3Raw = textureRaw(colortex3, fragCoord);
-	if (tex3Raw.a == 0.0) return waterShading;
+	if (tex3Raw.a == 0.0) return vec3(0.0);
 
 	vec3 viewDir = normalize(surface.positionView[0]);
 
 	vec3  normal = unpackNormal(tex3Raw.r);
 	float skyVis = tex3Raw.b;
 
+	float f;
+
 	// Reflections
-	vec3 reflection;
+	vec3 reflection = vec3(0.0);
 	{
 		vec3 rayDir = reflect(viewDir, normal);
+
+		f = f_schlick(dot(normal, -viewDir), dot(normal, rayDir), 0.02);
 
 		vec3 reflectedCoord;
 		if (raytraceIntersection(surface.positionView[0], rayDir, reflectedCoord)) {
@@ -194,13 +200,27 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 		} else if (skyVis > 0) {
 			reflection = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
 		}
-
-		reflection *= f_schlick(dot(normal, viewDir), dot(normal, rayDir), 0.02);
 	}
 
-	waterShading += reflection;
+	// Refractions
+	vec3 refraction = vec3(0.0);
+	bool useRefraction = true;
+	{
+		// TODO
+		vec3 rayDir = refract(viewDir, normal, isEyeInWater > 0 ? 1.333 : 1.0 / 1.333);
 
-	return waterShading;
+		if (all(equal(rayDir, vec3(0.0)))) {
+			useRefraction = false;
+		}
+
+		refraction = texture(colortex6, fragCoord).rgb;
+	}
+
+	if (useRefraction) {
+		return mix(refraction, reflection, f);
+	} else {
+		return reflection;
+	}
 }
 
 //--//
@@ -219,8 +239,14 @@ void main() {
 	surface.positionLocal[1]  = viewSpaceToLocalSpace(surface.positionView[1]);
 
 	if (surface.depth.y == 1.0) {
+		if (texture(colortex3, fragCoord).a > 0.0) {
+			composite = calculateWaterShading(surface);
+		} else {
+			composite = getSky(normalize(surface.positionLocal[0].xzy));
+		}
+
 		vec4 trans = texture(colortex2, fragCoord);
-		composite = mix(getSky(normalize(surface.positionLocal[0].xzy)), trans.rgb, trans.a);
+		composite = mix(composite, trans.rgb, trans.a);
 		return;
 	}
 
@@ -238,9 +264,10 @@ void main() {
 	composite = texture(colortex6, fragCoord).rgb * (1.0 - f_schlick(NoI, NoO, surface.material.specular));
 	composite += calculateReflection(surface);
 
+	if (texture(colortex3, fragCoord).a > 0.0) {
+		composite = calculateWaterShading(surface);
+	}
+
 	vec4 trans = texture(colortex2, fragCoord);
-
-	trans.rgb += calculateWaterShading(surface);
-
 	composite = mix(composite, trans.rgb, trans.a);
 }
