@@ -6,7 +6,7 @@ materialStruct getMaterial(vec2 coord) {
 	vec4 data = unpackUnorm4x8(floatBitsToUint(textureRaw(colortex0, coord).b));
 
 	material.albedo    = pow(diff.rgb, vec3(GAMMA));
-	material.specular  = spec.r;
+	material.specular  = min(spec.r, 0.99999);
 	material.metallic  = spec.g;
 	material.roughness = spec.b;
 	material.clearcoat = spec.a;
@@ -27,7 +27,7 @@ materialStruct getMaterial(vec2 coord, out float diffalpha) {
 	vec4 data = unpackUnorm4x8(floatBitsToUint(textureRaw(colortex0, coord).b));
 
 	material.albedo    = pow(diff.rgb, vec3(GAMMA));
-	material.specular  = spec.r;
+	material.specular  = min(spec.r, 0.99999);
 	material.metallic  = spec.g;
 	material.roughness = spec.b;
 	material.clearcoat = spec.a;

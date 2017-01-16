@@ -15,7 +15,7 @@
 /* DRAWBUFFERS:01 */
 
 layout (location = 0) out vec4 packedMaterial;
-layout (location = 1) out vec4 data1;
+layout (location = 1) out vec4 packedData;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -128,8 +128,8 @@ void main() {
 	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(0.0, 0.0, 0.0, 1.0)));
 	packedMaterial.a = 1.0;
 
-	data1.r = packNormal(getNormal(pCoord.st));
-	data1.g = packNormal(tbnMatrix[2]);
-	data1.b = 1.0;
-	data1.a = uintBitsToFloat(packUnorm2x16(lmUV));
+	packedData.r = packNormal(getNormal(pCoord.st));
+	packedData.g = packNormal(tbnMatrix[2]);
+	packedData.b = 1.0;
+	packedData.a = uintBitsToFloat(packUnorm2x16(lmUV));
 }

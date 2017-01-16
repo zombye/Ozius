@@ -123,7 +123,7 @@ vec3 viewSpaceToLocalSpace(vec3 viewSpace) {
 #include "/lib/projection.glsl"
 
 float miePhase(float cosTheta) {
-	const float g  = 0.75;
+	const float g  = 0.9;
 	const float g2 = g * g;
 
 	float p1 = (3.0 * (1.0 - g2)) / (2.0 * (2.0 + g2));
@@ -196,5 +196,5 @@ void main() {
 		light.shadow = 0.0;
 	}
 
-	composite = mix(surface.material.albedo, vec3(0.0), surface.material.metallic) * (light.engine.block + light.engine.sky + (light.shadow * light.pss));
+	composite = surface.material.albedo * (light.engine.block + light.engine.sky + (light.shadow * light.pss));
 }

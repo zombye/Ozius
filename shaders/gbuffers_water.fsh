@@ -78,7 +78,7 @@ float calculateWaterWaves(vec2 pos) {
 	const vec2 offs = vec2(1.512);
 	const mat2 rot  = mat2(cos(2), sin(2), -sin(2), cos(2));
 	for (uint i = 0; i < oct; i++) {
-		fbm -= scale * texture(noisetex, pcb(frameTimeCounter * 0.01 - pos, noisetex)).r;
+		fbm -= scale * texture(noisetex, pcb(frameTimeCounter * 0.01 + pos, noisetex)).r;
 		pos = rot * (pos + offs / oct) * 2.0;
 		scale *= 0.4;
 	}
@@ -90,19 +90,17 @@ vec3 calculateWaterParallax(vec3 pos, vec3 dir) {
 
 	vec3  increm = vec3(2.0 / steps) * (dir / abs(dir.z));
 	vec3  offset = vec3(0.0, 0.0, 0.0);
-	float height = calculateWaterWaves(pos.xz);
+	float height = calculateWaterWaves(pos.xy);
 
 	for (int i = 0; i < steps && height < offset.z; i++) {
 		offset += mix(vec3(0.0), increm, pow(offset.z - height, 0.8));
-		height  = calculateWaterWaves(pos.xz + offset.xy);
+		height  = calculateWaterWaves(pos.xy + offset.xy);
 	}
 
-	return pos + vec3(offset.x, 0.0, offset.y);
+	return pos + vec3(offset.xy, 0.0);
 }
 vec3 calculateWaterNormal(vec3 pos, vec3 viewDir) {
-	pos = calculateWaterParallax(pos, viewDir);
-
-	pos = pos.xzy;
+	pos = calculateWaterParallax(pos.xzy, viewDir);
 
 	vec3 p0 = pos + vec3(-0.1,-0.1, 0.0); p0.z += calculateWaterWaves(p0.xy);
 	vec3 p1 = pos + vec3( 0.1,-0.1, 0.0); p1.z += calculateWaterWaves(p1.xy);

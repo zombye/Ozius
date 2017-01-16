@@ -132,14 +132,17 @@ bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace, out vec3 vie
 		float diff    = viewSpace.z - linearizeDepth(screenZ);
 
 		if (diff < 0.0) {
+			// Get the info required to accurately intersect a plane
 			vec3 samplePos  = screenSpaceToViewSpace(vec3(screenSpace.xy, screenZ));
 			vec3 sampleNorm = getNormalGeom(screenSpace.xy);
 
-			// Assuming we've found the right plane, this will put the positions exactly where the ray intersects it.
+			// Accurately intersect the plane we think is the right one
 			viewSpace  += vec * (dot(samplePos - viewSpace, sampleNorm) / dot(vec, sampleNorm));
 			screenSpace = viewSpaceToScreenSpace(viewSpace);
 
-			if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5)))) return false;
+			// Check to make sure we've actually hit something
+			// TODO: Also check to make sure we at least got close enough that it's still believable that we actually hit the plane we think we hit.
+			if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5))) || texture(depthtex1, screenSpace.xy).r == 1.0) return false;
 
 			return true;
 		}
