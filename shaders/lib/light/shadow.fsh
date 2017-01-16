@@ -5,8 +5,9 @@ float calculateShadow(vec3 positionLocal, vec3 normal) {
 
 	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex0, 0).x) * shadowProjection[2].z;
 	zBias *= tan(acos(abs(dot(normalize(shadowLightPosition), normal))));
-	zBias *= distortCoeff * distortCoeff;
 	zBias *= mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
+
+	zBias *= distortCoeff * distortCoeff;
 	zBias -= (0.0059 * shadowProjection[0].x) * SQRT2;
 
 	shadowCoord.z += zBias;

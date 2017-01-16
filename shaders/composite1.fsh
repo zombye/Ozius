@@ -115,7 +115,7 @@ float f0FromIOR(float n) {
 	return n * n;
 }
 
-bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace) {
+bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace, out vec3 viewSpace) {
 	const float maxSteps  = 32;
 	const float stepSize  = 0.5;
 	const float stepScale = 1.6;
@@ -123,8 +123,8 @@ bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace) {
 	pos = pos + (vec * stepSize);
 
 	for (uint i = 0; i < maxSteps; i++) {
-		vec3 viewSpace   = pos + (vec * pow(i, stepScale) * stepSize);
-		     screenSpace = viewSpaceToScreenSpace(viewSpace);
+		viewSpace   = pos + (vec * pow(i, stepScale) * stepSize);
+		screenSpace = viewSpaceToScreenSpace(viewSpace);
 
 		if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5)))) return false;
 
@@ -164,7 +164,8 @@ vec3 calculateReflection(surfaceStruct surface) {
 		vec3 mul = mix(vec3(1.0), surface.material.albedo, surface.material.metallic) * f_schlick(NoI, NoO, surface.material.specular);
 
 		vec3 reflectedCoord;
-		if (raytraceIntersection(surface.positionView[1], rayDir, reflectedCoord)) {
+		vec3 reflectedPos;
+		if (raytraceIntersection(surface.positionView[1], rayDir, reflectedCoord, reflectedPos)) {
 			reflection += texture(colortex6, reflectedCoord.xy).rgb * mul;
 		} else if (skyVis > 0) {
 			reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis * mul;
@@ -175,6 +176,14 @@ vec3 calculateReflection(surfaceStruct surface) {
 }
 
 //--//
+
+vec3 waterFog(vec3 col, float dist) {
+	const vec3 waterColor = vec3(0.2, 0.4, 0.9);
+	const float density = 0.4;
+
+	col *= pow(waterColor, vec3(dist * density));
+	return mix(waterColor * 0.05, col, exp(-dist * density));
+}
 
 vec3 calculateWaterShading(surfaceStruct surface) {
 	vec4 tex3Raw = textureRaw(colortex3, fragCoord);
@@ -194,11 +203,18 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 
 		f = f_schlick(dot(normal, -viewDir), dot(normal, rayDir), 0.02);
 
-		vec3 reflectedCoord;
-		if (raytraceIntersection(surface.positionView[0], rayDir, reflectedCoord)) {
-			reflection = texture(colortex6, reflectedCoord.xy).rgb;
+		vec3 hitCoord;
+		vec3 hitPos;
+		if (raytraceIntersection(surface.positionView[0], rayDir, hitCoord, hitPos)) {
+			reflection = texture(colortex6, hitCoord.xy).rgb;
 		} else if (skyVis > 0) {
 			reflection = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
+		}
+
+		float rayLength = distance(surface.positionView[0], hitPos);
+
+		if (isEyeInWater == 1) {
+			reflection = waterFog(reflection, rayLength);
 		}
 	}
 
@@ -207,20 +223,34 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 	bool useRefraction = true;
 	{
 		// TODO
-		vec3 rayDir = refract(viewDir, normal, isEyeInWater > 0 ? 1.333 : 1.0 / 1.333);
+		vec3 rayDir = refract(viewDir, normal, isEyeInWater > 0 ? 1.33 : 0.75);
 
+		vec3 hitCoord = surface.positionScreen[0];
+		vec3 hitPos = surface.positionView[1];
 		if (all(equal(rayDir, vec3(0.0)))) {
 			useRefraction = false;
-		}
+		} else refraction = texture(colortex6, hitCoord.xy).rgb;
 
-		refraction = texture(colortex6, fragCoord).rgb;
+		float rayLength = distance(surface.positionView[0], hitPos);
+
+		if (isEyeInWater == 0) {
+			refraction = waterFog(refraction, rayLength);
+		}
 	}
+
+	vec3 waterShading = vec3(0.0);
 
 	if (useRefraction) {
-		return mix(refraction, reflection, f);
+		waterShading = mix(refraction, reflection, f);
 	} else {
-		return reflection;
+		waterShading = reflection;
 	}
+
+	if (isEyeInWater == 1) {
+		waterShading = waterFog(waterShading, length(surface.positionView[0]));
+	}
+
+	return waterShading;
 }
 
 //--//
@@ -266,6 +296,8 @@ void main() {
 
 	if (texture(colortex3, fragCoord).a > 0.0) {
 		composite = calculateWaterShading(surface);
+	} else if (isEyeInWater == 1) {
+		composite = waterFog(composite, length(surface.positionView[0]));
 	}
 
 	vec4 trans = texture(colortex2, fragCoord);
