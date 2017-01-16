@@ -100,8 +100,6 @@ vec3 getSky(vec3 dir) {
 
 //--//
 
-#include "/lib/reflectanceModels.glsl"
-
 float f0ToIOR(float f0) {
 	f0 = sqrt(f0);
 	return (1.0 + f0) / (1.0 - f0);
@@ -114,6 +112,8 @@ float f0FromIOR(float n) {
 	n = (1.0 - n) / (1.0 + n);
 	return n * n;
 }
+
+#include "/lib/reflectanceModels.glsl"
 
 bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace, out vec3 viewSpace) {
 	const float maxSteps  = 32;
@@ -159,9 +159,8 @@ vec3 calculateReflection(surfaceStruct surface) {
 		vec3 normal = surface.normal;
 		vec3 rayDir = reflect(viewDir, normal);
 
-		float NoI = dot(normal, rayDir);
-		float NoO = dot(normal, viewDir);
-		vec3 mul = mix(vec3(1.0), surface.material.albedo, surface.material.metallic) * f_schlick(NoI, NoO, surface.material.specular);
+		float NoO = dot(normal, -viewDir);
+		vec3 mul = mix(vec3(1.0), surface.material.albedo, surface.material.metallic) * f_fresnel(NoO, surface.material.specular);
 
 		vec3 reflectedCoord;
 		vec3 reflectedPos;
@@ -201,7 +200,7 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 	{
 		vec3 rayDir = reflect(viewDir, normal);
 
-		f = f_schlick(dot(normal, -viewDir), dot(normal, rayDir), 0.02);
+		f = f_fresnel(dot(normal, -viewDir), 0.02);
 
 		vec3 hitCoord;
 		vec3 hitPos;
@@ -288,10 +287,9 @@ void main() {
 	surface.normal     = getNormal(fragCoord);
 	surface.normalGeom = getNormalGeom(fragCoord);
 
-	float NoI = dot(surface.normal, normalize(shadowLightPosition));
 	float NoO = dot(surface.normal, -normalize(surface.positionView[0]));
 
-	composite = texture(colortex6, fragCoord).rgb * (1.0 - f_schlick(NoI, NoO, surface.material.specular));
+	composite = texture(colortex6, fragCoord).rgb * (1.0 - f_fresnel(NoO, surface.material.specular));
 	composite += calculateReflection(surface);
 
 	if (texture(colortex3, fragCoord).a > 0.0) {
