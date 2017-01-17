@@ -4,12 +4,6 @@
 
 #include "/cfg/global.scfg"
 
-#define PM_QUALITY 2 // 0 = Off. 1 = Low. 2 = Medium. 3 = High. [0 1 2 3]
-#define PM_DEPTH 0.25
-//#define PM_DEPTH_WRITE
-
-#define PSS_QUALITY 2 // 0 = Off. 1 = Low. 2 = Medium. 3 = High. [0 1 2 3]
-
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 /* DRAWBUFFERS:01 */

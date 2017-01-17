@@ -15,8 +15,7 @@ float f_fresnel(float cosTheta, float f0) {
 	float n1 = 1.0;
 	float n2 = f0ToIOR(f0);
 
-	float sinTheta = sin(acos(cosTheta));
-	float p = ((n1 / n2) * sinTheta); p = sqrt(1.0 - (p * p));
+	float p = ((n1 / n2) * sin(acos(cosTheta))); p = sqrt(1.0 - (p * p));
 
 	float rs = ((n1 * cosTheta) - (n2 * p)) / ((n1 * cosTheta) + (n2 * p)); rs *= rs;
 	float rp = ((n1 * p) - (n2 * cosTheta)) / ((n1 * p) + (n2 * cosTheta)); rp *= rp;
