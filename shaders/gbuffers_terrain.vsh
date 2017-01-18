@@ -23,6 +23,7 @@ layout (location = 12) in vec4 vertexTangent;
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
 uniform float frameTimeCounter;
+uniform float rainStrength;
 
 uniform vec3 cameraPosition;
 

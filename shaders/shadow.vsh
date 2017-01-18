@@ -17,6 +17,7 @@ layout (location = 11) in vec2 quadMidUV;
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
 uniform float frameTimeCounter;
+uniform float rainStrength;
 
 uniform vec3 cameraPosition;
 
