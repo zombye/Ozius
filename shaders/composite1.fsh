@@ -33,7 +33,7 @@ struct surfaceStruct {
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS:0 */
+/* DRAWBUFFERS:5 */
 
 layout (location = 0) out vec3 composite;
 
@@ -55,7 +55,7 @@ uniform mat4 gbufferModelViewInverse;
 uniform sampler2D colortex0, colortex1;
 uniform sampler2D colortex2, colortex3; // Transparent surfaces
 
-uniform sampler2D colortex6; // Previous pass
+uniform sampler2D colortex5; // Previous pass
 uniform sampler2D colortex7; // Sky
 
 uniform sampler2D depthtex0, depthtex1;
@@ -166,7 +166,7 @@ vec3 calculateReflection(surfaceStruct surface) {
 		vec3 reflectedCoord;
 		vec3 reflectedPos;
 		if (raytraceIntersection(surface.positionView[1], rayDir, reflectedCoord, reflectedPos)) {
-			reflection += texture(colortex6, reflectedCoord.xy).rgb * mul;
+			reflection += texture(colortex5, reflectedCoord.xy).rgb * mul;
 		} else if (skyVis > 0) {
 			reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis * mul;
 		}
@@ -204,7 +204,7 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 		vec3 hitCoord;
 		vec3 hitPos;
 		if (raytraceIntersection(surface.positionView[0], rayDir, hitCoord, hitPos)) {
-			reflection = texture(colortex6, hitCoord.xy).rgb;
+			reflection = texture(colortex5, hitCoord.xy).rgb;
 		} else if (skyVis > 0) {
 			reflection = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
 		}
@@ -225,10 +225,12 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 		vec3 hitPos   = surface.positionView[1];
 		if (all(equal(rayDir, vec3(0.0)))) {
 			useRefraction = false;
-		} else refraction = texture(colortex6, hitCoord.xy).rgb;
+		} else {
+			refraction = texture(colortex5, hitCoord.xy).rgb;
 
-		if (isEyeInWater == 0) {
-			refraction = waterFog(refraction, distance(surface.positionView[0], hitPos));
+			if (isEyeInWater == 0) {
+				refraction = waterFog(refraction, distance(surface.positionView[0], hitPos));
+			}
 		}
 	}
 
@@ -276,7 +278,7 @@ void main() {
 	surface.normal     = getNormal(fragCoord);
 	surface.normalGeom = getNormalGeom(fragCoord);
 
-	composite = texture(colortex6, fragCoord).rgb;
+	composite = texture(colortex5, fragCoord).rgb;
 	if (surface.material.specular > 0.0) {
 		composite *= (1.0 - f_fresnel(dot(surface.normal, -normalize(surface.positionView[0])), surface.material.specular));
 		composite += calculateReflection(surface);

@@ -21,7 +21,7 @@ const int colortex1Format = RGBA32F; // Normals, lightmap
 const int colortex2Format = RGBA32F; // Transparent surfaces
 const int colortex3Format = RGBA32F; // Water data
 
-const int colortex6Format = RGBA32F;
+const int colortex5Format = RGBA32F;
 const int colortex7Format = RGBA32F; // Sky
 
 const bool shadowHardwareFiltering0 = true;
@@ -68,7 +68,7 @@ struct lightStruct {
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS:67 */
+/* DRAWBUFFERS:57 */
 
 layout (location = 0) out vec3 composite;
 layout (location = 1) out vec3 sky;
