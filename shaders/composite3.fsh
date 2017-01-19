@@ -4,15 +4,19 @@
 
 #include "/cfg/global.scfg"
 
+const bool colortex5MipmapEnabled = true;
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS:0 */
+/* DRAWBUFFERS:5 */
 
-layout (location = 0) out vec3 finalColor;
+layout (location = 0) out vec3 composite; 
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
 in vec2 fragCoord;
+
+in float exposure;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
@@ -20,27 +24,10 @@ uniform sampler2D colortex5;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
-void tonemap(inout vec3 color) {
-	color *= color;
-	color /= color + 1.0;
-	color  = pow(color, vec3(0.5 / GAMMA));
-}
-void dither(inout vec3 color) {
-	const mat4 pattern = mat4(
-		 1,  9,  3, 11,
-		13,  5, 15,  7,
-		 4, 12,  2, 10,
-		16,  8, 14,  6
-	) / (255 * 17);
+#include "/lib/preprocess.glsl"
 
-	ivec2 p = ivec2(mod(gl_FragCoord.st, 4.0));
-
-	color += pattern[p.x][p.y];
-}
+//--//
 
 void main() {
-	finalColor = texture(colortex5, fragCoord).rgb;
-
-	tonemap(finalColor);
-	dither(finalColor);
+	composite = texture(colortex5, fragCoord).rgb * exposure;
 }

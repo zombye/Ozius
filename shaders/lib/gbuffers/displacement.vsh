@@ -48,7 +48,7 @@ void calculateWavingDoublePlants(inout vec3 position, vec2 wind) {
 	disp *= mix(0.05, 0.2, float(topHalf && topVert));
 
 	position.xz += sin(disp);
-	position.y  += cos(disp.x + disp.y) - 1.0;
+	position.y += cos((disp.x + disp.y) * mix(1.0, 0.5, float(topHalf && topVert))) - 1.0;
 
 	return;
 }

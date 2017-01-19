@@ -6,5 +6,5 @@ vec3 equirectangleReverse(vec2 coord) {
 
 	float cosLat = cos(coord.y);
 
-	return normalize(vec3(cosLat * sin(coord.x), cosLat * cos(coord.x), sin(coord.y)));
+	return vec3(cosLat * sin(coord.x), cosLat * cos(coord.x), sin(coord.y));
 }

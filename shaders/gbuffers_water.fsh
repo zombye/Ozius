@@ -6,16 +6,23 @@
 
 //--// Structs //----------------------------------------------------------------------------------------//
 
-struct engineLightStruct {
-	vec2 raw;
-	vec3 block;
-	vec3 sky;
-};
-struct lightStruct {
-	engineLightStruct engine;
+struct surfaceStruct {
+	vec3 normal;
+	vec3 normalGeom;
 
-	float pss;
-	float shadow;
+	vec2 depth; // y is linearized
+
+	vec3 positionScreen; // Position in screen-space
+	vec3 positionView;   // Position in view-space
+	vec3 positionLocal;  // Position in local-space
+};
+
+struct lightStruct {
+	vec2 engine;
+
+	vec3 global;
+	vec3 sky;
+	vec3 block;
 };
 
 //--// Outputs //----------------------------------------------------------------------------------------//
@@ -38,6 +45,8 @@ in float blockID;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
+uniform int worldTime;
+
 uniform float shadowAngle;
 uniform float frameTimeCounter;
 
@@ -47,6 +56,7 @@ uniform vec3 cameraPosition;
 uniform mat4 shadowModelView, shadowProjection;
 
 uniform sampler2D base;
+uniform sampler2D normals;
 
 uniform sampler2DShadow shadowtex0;
 
@@ -55,8 +65,19 @@ uniform sampler2D noisetex;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
+#include "/lib/illuminance.glsl"
 
 #include "/lib/util/packing/normal.glsl"
+
+//--//
+
+vec3 getNormal(vec2 coord) {
+	vec3 tsn = texture(normals, coord).rgb;
+	tsn.xy += 0.5 / 255.0; // Need to add this for correct results.
+	return tbnMatrix * normalize(tsn * 2.0 - 1.0);
+}
+
+//--//
 
 vec2 pcb(vec2 coord, sampler2D sampler) {
 	ivec2 res = textureSize(sampler, 0);
@@ -74,19 +95,17 @@ float calculateWaterWaves(vec2 pos) {
 	pos += frameTimeCounter;
 	pos /= 128.0;
 
-	const uint oct  = 5;
-	const vec2 offs = vec2(1.512);
 	const mat2 rot  = mat2(cos(2), sin(2), -sin(2), cos(2));
-	for (uint i = 0; i < oct; i++) {
+	for (uint i = 0; i < 5; i++) {
 		fbm -= scale * texture(noisetex, pcb(frameTimeCounter * 0.01 + pos, noisetex)).r;
-		pos = rot * (pos + offs / oct) * 2.0;
+		pos = rot * (pos + 0.3024) * 2.0;
 		scale *= 0.4;
 	}
 
 	return fbm * 0.1;
 }
 vec3 calculateWaterParallax(vec3 pos, vec3 dir) {
-	const int steps = 16;
+	const int steps = 8;
 
 	vec3  increm = vec3(2.0 / steps) * (dir / abs(dir.z));
 	vec3  offset = vec3(0.0, 0.0, 0.0);
@@ -109,8 +128,13 @@ vec3 calculateWaterNormal(vec3 pos, vec3 viewDir) {
 	return normalize(tbnMatrix * cross(p1 - p0, p2 - p0));
 }
 
-#include "/lib/light/engine.fsh"
-#include "/lib/light/shadow.fsh"
+//--//
+
+#include "/lib/light/global.fsh"
+#include "/lib/light/sky.fsh"
+#include "/lib/light/block.fsh"
+
+//--//
 
 void main() {
 	if (abs(blockID - 8.5) < 0.6) {
@@ -131,10 +155,18 @@ void main() {
 
 	data0.rgb = pow(data0.rgb, vec3(GAMMA));
 
-	lightStruct light;
-	light.engine = calculateEngineLight(lmUV);
-	light.shadow = calculateShadow(positionLocal, tbnMatrix[2]);
-	light.pss = 1.0;
+	surfaceStruct surface;
+	surface.positionLocal = positionLocal;
 
-	data0.rgb *= light.engine.block + light.engine.sky + (light.shadow * light.pss);
+	surface.normal     = getNormal(baseUV);
+	surface.normalGeom = tbnMatrix[2];
+
+	lightStruct light;
+	light.engine = lmUV;
+
+	light.global = calculateGlobalLight(surface);
+	light.sky    = calculateSkyLight(light.engine.y);
+	light.block  = calculateBlockLight(light.engine.x);
+
+	data0.rgb *= light.global + light.sky;
 }
