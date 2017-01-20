@@ -43,9 +43,9 @@ float diffuseOrenNayar(vec3 light, vec3 normal, vec3 view, float roughness) {
 
 #if SHADOW_SAMPLING_TYPE == 0
 vec3 sampleShadows(vec3 coord) {
-	float shadow0     = texture(shadowtex0, coord); shadow0 *= shadow0;
-	float shadow1     = float(texture(shadowtex1, coord.xy).r > coord.z);
-	vec3  shadowColor = texture(shadowcolor0, coord.xy).rgb;
+	float shadow0     = textureLod(shadowtex0, coord, 0); shadow0 *= shadow0;
+	float shadow1     = float(textureLod(shadowtex1, coord.xy, 0).r > coord.z);
+	vec3  shadowColor = textureLod(shadowcolor0, coord.xy, 0).rgb;
 
 	return mix(vec3(shadow0), shadowColor, shadow1 > sign(shadow0));
 }
@@ -65,9 +65,9 @@ vec3 sampleShadowsSoft(vec3 coord) {
 
 	for (int i = 0; i < offset.length(); i++) {
 		vec3 offsCoord = coord + vec3(offset[i] / textureSize(shadowtex0, 0), 0);
-		shadow0     += texture(shadowtex0, offsCoord);
-		shadow1     += float(texture(shadowtex1, offsCoord.xy).r > offsCoord.z);
-		shadowColor += texture(shadowcolor0, offsCoord.xy).rgb;
+		shadow0     += textureLod(shadowtex0, offsCoord, 0);
+		shadow1     += float(textureLod(shadowtex1, offsCoord.xy, 0).r > offsCoord.z);
+		shadowColor += textureLod(shadowcolor0, offsCoord.xy, 0).rgb;
 	}
 	shadow0 /= offset.length(); shadow0 *= shadow0;
 	shadow1 /= offset.length();
