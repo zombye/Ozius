@@ -3,6 +3,26 @@ float diffuseLambert(float NoI) {
 	return NoI / PI;
 }
 
+#define SHADOW_SAMPLING_TYPE 1 // 0 = Single sample. 1 = 3x3 soft shadow samples. [0 1]
+
+float sampleShadows(vec3 coord) {
+	float shadow = texture(shadowtex0, coord);
+	return shadow * shadow;
+}
+float sampleShadowsSoft(vec3 coord) {
+	float shadow = 0.0;
+
+	for (int i = -1; i <= 1; i++) {
+		for (int j = -1; j <= 1; j++) {
+			vec2 offset = vec2(i, j) / textureSize(shadowtex0, 0);
+			shadow += texture(shadowtex0, coord + vec3(offset, 0));
+		}
+	}
+	shadow /= 3*3;
+
+	return shadow * shadow;
+}
+
 float calculateShadows(vec3 positionLocal, vec3 normal) {
 	vec3 shadowCoord = (shadowProjection * shadowModelView * vec4(positionLocal, 1.0)).xyz;
 
@@ -22,9 +42,7 @@ float calculateShadows(vec3 positionLocal, vec3 normal) {
 
 	shadowCoord = shadowCoord * 0.5 + 0.5;
 
-	float shadow = texture(shadowtex0, shadowCoord);
-
-	return shadow * shadow;
+	return sampleShadowsSoft(shadowCoord);
 }
 
 vec3 calculateGlobalLight(surfaceStruct surface) {
