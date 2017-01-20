@@ -12,9 +12,7 @@ layout (location = 0) in vec4 vertexPosition;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform float frameTime;
-
-uniform sampler2D colortex5, colortex6;
+uniform sampler2D colortex5;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 

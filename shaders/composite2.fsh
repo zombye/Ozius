@@ -102,14 +102,6 @@ float f0ToIOR(float f0) {
 	f0 = sqrt(f0);
 	return (1.0 + f0) / (1.0 - f0);
 }
-float f0FromIOR(float n1, float n2) {
-	n1 = (n1 - n2) / (n1 + n2);
-	return n1 * n1;
-}
-float f0FromIOR(float n) {
-	n = (1.0 - n) / (1.0 + n);
-	return n * n;
-}
 
 #include "/lib/reflectanceModels.glsl"
 
@@ -161,6 +153,8 @@ vec3 calculateReflection(surfaceStruct surface) {
 		vec3 normal = surface.normal;
 		vec3 rayDir = reflect(viewDir, normal);
 		for (uint j = 0; j < bounces; j++) {
+			// TODO
+
 			if (j < bounces) {
 				// Get info required for next raytrace
 			}

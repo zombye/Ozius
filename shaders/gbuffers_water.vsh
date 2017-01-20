@@ -2,8 +2,7 @@
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-out vec3 positionView;
-out vec3 positionLocal;
+out vec3 positionView, positionLocal;
 
 out mat3 tbnMatrix;
 out vec4 tint;

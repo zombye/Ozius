@@ -34,8 +34,7 @@ layout (location = 1) out vec4 data1;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
-in vec3 positionView;
-in vec3 positionLocal;
+in vec3 positionView, positionLocal;
 
 in mat3 tbnMatrix;
 in vec4 tint;
@@ -45,10 +44,7 @@ in float blockID;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform int worldTime;
-
 uniform float shadowAngle;
-uniform float frameTimeCounter;
 
 uniform vec3 shadowLightPosition;
 uniform vec3 cameraPosition;
@@ -66,8 +62,11 @@ uniform sampler2D noisetex;
 
 #include "/lib/preprocess.glsl"
 #include "/lib/illuminance.glsl"
+#include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"
+
+#include "/lib/util/textureSmooth.glsl"
 
 //--//
 
@@ -79,26 +78,16 @@ vec3 getNormal(vec2 coord) {
 
 //--//
 
-vec2 pcb(vec2 coord, sampler2D sampler) {
-	ivec2 res = textureSize(sampler, 0);
-	coord *= res;
-
-	vec2 fr = fract(coord);
-	coord = floor(coord) + (fr * fr * (3.0 - 2.0 * fr)) + 0.5;
-
-	return coord / res;
-}
 float calculateWaterWaves(vec2 pos) {
 	float fbm = 0.0;
 	float scale = 1.0;
 
-	pos += frameTimeCounter;
+	pos += globalTime;
 	pos /= 128.0;
 
-	const mat2 rot  = mat2(cos(2), sin(2), -sin(2), cos(2));
 	for (uint i = 0; i < 5; i++) {
-		fbm -= scale * texture(noisetex, pcb(frameTimeCounter * 0.01 + pos, noisetex)).r;
-		pos = rot * (pos + 0.3024) * 2.0;
+		fbm -= scale * textureSmooth(noisetex, globalTime * 0.01 + pos).r;
+		pos = mat2(cos(2), sin(2), -sin(2), cos(2)) * (pos + 0.3024) * 2.0;
 		scale *= 0.4;
 	}
 

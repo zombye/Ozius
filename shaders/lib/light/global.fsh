@@ -31,12 +31,9 @@ vec3 calculateGlobalLight(surfaceStruct surface) {
 	float diffuse = max(dot(surface.normal, normalize(shadowLightPosition)), 0.0) / PI;
 	float shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
 
-	float timeDay   = max(1.0 - (distance(worldTime / 6000.0, 1.0)), 0.0);
-	float timeNight = max(1.0 - (distance(worldTime / 6000.0, 2.0)), 0.0);
+	vec3 sunlightColor = mix(vec3(1.0, 0.6, 0.2) * 0.4, vec3(1.0, 0.96, 0.95), 1.0 - saturate(distance(mod(globalTime, 12e2), 300.0) / 300.0));
 
-	vec3 sunlightColor = mix(vec3(1.0, 0.6, 0.2) * 0.4, vec3(1.0, 0.96, 0.95), timeDay);
-
-	vec3 light = mix(ILLUMINANCE_SUN * sunlightColor, 0.2 * vec3(1.0, 0.9, 0.85), timeDay <= timeNight);
+	vec3 light = mix(0.2 * vec3(1.0, 0.9, 0.85), ILLUMINANCE_SUN * sunlightColor, mod(globalTime, 12e2) < 600.0);
 	light *= diffuse * shadows;
 
 	return light;

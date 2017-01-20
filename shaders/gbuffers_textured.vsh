@@ -4,8 +4,7 @@
 
 out mat3 tbnMatrix;
 out vec4 tint;
-out vec2 baseUV;
-out vec2 lmUV;
+out vec2 baseUV, lmUV;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -18,7 +17,7 @@ layout (location = 12) in vec4 vertexTangent;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform mat4 gbufferProjection;
+//uniform mat4 gbufferProjection;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 

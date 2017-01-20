@@ -22,11 +22,12 @@ const int colortex2Format = RGBA32F; // Transparent surfaces
 const int colortex3Format = RGBA32F; // Water data
 
 const int colortex5Format = RGBA32F;
+
 const int colortex7Format = RGBA32F; // Sky
+*/
 
 const bool shadowHardwareFiltering0 = true;
 const bool shadowHardwareFiltering1 = true;
-*/
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
@@ -40,32 +41,14 @@ in vec2 fragCoord;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform int worldTime;
-
-uniform float shadowAngle;
-
 uniform vec3 shadowLightPosition;
 
-uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
 #include "/lib/illuminance.glsl"
-
-//--//
-
-float linearizeDepth(float depth) {
-	return 1.0 / ((depth * 2.0 - 1.0) * gbufferProjectionInverse[2].w + gbufferProjectionInverse[3].w);
-}
-vec3 screenSpaceToViewSpace(vec3 screenSpace) {
-	vec4 viewSpace = gbufferProjectionInverse * vec4(screenSpace * 2.0 - 1.0, 1.0);
-	return viewSpace.xyz / viewSpace.w;
-}
-vec3 viewSpaceToLocalSpace(vec3 viewSpace) {
-	return (gbufferModelViewInverse * vec4(viewSpace, 1.0)).xyz;
-}
 
 //--//
 

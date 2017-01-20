@@ -6,8 +6,7 @@ out vec3 positionView;
 
 out mat3 tbnMatrix;
 out vec4 tint;
-out vec2 baseUV;
-out vec2 lmUV;
+out vec2 baseUV, lmUV;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -22,7 +21,6 @@ layout (location = 12) in vec4 vertexTangent;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform float frameTimeCounter;
 uniform float rainStrength;
 
 uniform vec3 cameraPosition;
@@ -35,8 +33,9 @@ uniform sampler2D noisetex;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
+#include "/lib/time.glsl"
 
-#include "/lib/util/sumof.glsl"
+#include "/lib/util/textureSmooth.glsl"
 
 //--//
 
@@ -53,19 +52,6 @@ mat3 calculateTBN() {
 }
 
 //--//
-
-vec2 pcb(vec2 coord, sampler2D sampler) {
-	ivec2 res = textureSize(sampler, 0);
-	coord *= res;
-
-	vec2 fr = fract(coord);
-	coord = floor(coord) + (fr * fr * (3.0 - 2.0 * fr)) + 0.5;
-
-	return coord / res;
-}
-vec4 textureSmooth(sampler2D sampler, vec2 coord) {
-	return texture(sampler, pcb(coord, sampler));
-}
 
 #include "/lib/gbuffers/displacement.vsh"
 

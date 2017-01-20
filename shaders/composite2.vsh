@@ -12,6 +12,5 @@ layout (location = 0) in vec4 vertexPosition;
 
 void main() {
 	gl_Position = vertexPosition * 2.0 - 1.0;
-
 	fragCoord = vertexPosition.xy;
 }

@@ -3,7 +3,7 @@ vec2 calculateWind(vec3 position) {
 	vec2 pos = position.xz / textureSize(noisetex, 0);
 
 	// Main wind
-	wind = textureSmooth(noisetex, (pos / 16.0) + (frameTimeCounter * 0.01)).rg * 3.0 - 1.5;
+	wind = textureSmooth(noisetex, (pos / 16.0) + (globalTime * 0.01)).rg * 3.0 - 1.5;
 	wind *= rainStrength + 1.0;
 
 	// Small-scale turbulence
@@ -13,7 +13,7 @@ vec2 calculateWind(vec3 position) {
 	float freq = 1.0;
 	float lacu = 1.5;
 
-	pos += frameTimeCounter * 0.02;
+	pos += globalTime * 0.02;
 	for (uint i = 0; i < oct; i++) {
 		wind += ampl * (textureSmooth(noisetex, pos * freq).rg - 0.5);
 		ampl *= gain;

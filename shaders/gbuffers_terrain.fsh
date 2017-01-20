@@ -23,8 +23,7 @@ in vec3 positionView;
 
 in mat3 tbnMatrix;
 in vec4 tint;
-in vec2 baseUV;
-in vec2 lmUV;
+in vec2 baseUV, lmUV;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
@@ -32,9 +31,8 @@ uniform vec3 shadowLightPosition;
 
 uniform mat4 gbufferProjection;
 
-uniform sampler2D base;
+uniform sampler2D base, specular;
 uniform sampler2D normals;
-uniform sampler2D specular;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 

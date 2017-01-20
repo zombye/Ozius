@@ -14,10 +14,6 @@ struct materialStruct {
 	float metallic;  // Specular G channel. In SEUS v11.0: Additive rain specularity
 	float roughness; // Specular B channel. In SEUS v11.0: Roughness / Glossiness
 	float clearcoat; // Specular A channel. In SEUS v11.0: Unused
-	float dR;
-	float dG;
-	float dB;
-	float dA;
 };
 
 struct surfaceStruct {
@@ -33,11 +29,6 @@ struct surfaceStruct {
 	vec3 positionLocal;  // Position in local-space
 };
 
-struct engineLightStruct {
-	vec2 raw;
-	vec3 block;
-	vec3 sky;
-};
 struct lightStruct {
 	vec2 engine;
 	float pss;
@@ -59,20 +50,14 @@ in vec2 fragCoord;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform int worldTime;
-
 uniform float shadowAngle;
 
 uniform vec3 shadowLightPosition;
 
-uniform mat4 gbufferProjectionInverse;
-uniform mat4 gbufferModelViewInverse;
-
+uniform mat4 gbufferProjectionInverse, gbufferModelViewInverse;
 uniform mat4 shadowProjection, shadowModelView;
 
 uniform sampler2D colortex0, colortex1;
-uniform sampler2D colortex7; // Sky
-
 uniform sampler2D depthtex1;
 
 uniform sampler2DShadow shadowtex0;
@@ -81,6 +66,7 @@ uniform sampler2DShadow shadowtex0;
 
 #include "/lib/preprocess.glsl"
 #include "/lib/illuminance.glsl"
+#include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"
 
@@ -91,9 +77,6 @@ uniform sampler2DShadow shadowtex0;
 
 //--//
 
-float linearizeDepth(float depth) {
-	return 1.0 / ((depth * 2.0 - 1.0) * gbufferProjectionInverse[2].w + gbufferProjectionInverse[3].w);
-}
 vec3 screenSpaceToViewSpace(vec3 screenSpace) {
 	vec4 viewSpace = gbufferProjectionInverse * vec4(screenSpace * 2.0 - 1.0, 1.0);
 	return viewSpace.xyz / viewSpace.w;

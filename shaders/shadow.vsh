@@ -16,7 +16,6 @@ layout (location = 11) in vec2 quadMidUV;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform float frameTimeCounter;
 uniform float rainStrength;
 
 uniform vec3 cameraPosition;
@@ -29,6 +28,9 @@ uniform sampler2D noisetex;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
+#include "/lib/time.glsl"
+
+#include "/lib/util/textureSmooth.glsl"
 
 //--//
 
@@ -36,31 +38,20 @@ uniform sampler2D noisetex;
 
 //--//
 
-vec2 pcb(vec2 coord, sampler2D sampler) {
-	ivec2 res = textureSize(sampler, 0);
-	coord *= res;
-
-	vec2 fr = fract(coord);
-	coord = floor(coord) + (fr * fr * (3.0 - 2.0 * fr)) + 0.5;
-
-	return coord / res;
-}
-vec4 textureSmooth(sampler2D sampler, vec2 coord) {
-	return texture(sampler, pcb(coord, sampler));
-}
-
 #include "/lib/gbuffers/displacement.vsh"
 
 //--//
 
 void main() {
 	gl_Position = initPosition();
-	vec4 positionLocal = shadowModelViewInverse * gl_Position;
-	vec4 positionWorld = positionLocal + vec4(cameraPosition, 0.0);
-	calculateDisplacement(positionWorld.xyz);
-	positionLocal = positionWorld - vec4(cameraPosition, 0.0);
-	gl_Position = shadowModelView * positionLocal;
-	gl_Position = gl_ProjectionMatrix * gl_Position;
+	gl_Position = shadowModelViewInverse * gl_Position;
+
+	gl_Position = gl_Position + vec4(cameraPosition, 0.0);
+	calculateDisplacement(gl_Position.xyz);
+	gl_Position = gl_Position - vec4(cameraPosition, 0.0);
+
+	gl_Position = shadowModelView  * gl_Position;
+	gl_Position = shadowProjection * gl_Position;
 
 	gl_Position.xy /= 1.0 + length(gl_Position.xy);
 	gl_Position.z  *= 0.25;
