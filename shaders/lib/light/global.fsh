@@ -152,7 +152,7 @@ vec3 calculateShadows(vec3 positionLocal, vec3 normal) {
 }
 
 vec3 calculateGlobalLight(surfaceStruct surface) {
-	float diffuse = calculateDiffuse(normalize(shadowLightPosition), surface.normal, normalize(surface.positionView), surface.material.roughness);
+	float diffuse = calculateDiffuse(normalize(shadowLightPosition), surface.normal, normalize(-surface.positionView), surface.material.roughness);
 	vec3 shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
 
 	vec3 sunlightColor = mix(vec3(1.0, 0.6, 0.2) * 0.4, vec3(1.0, 0.96, 0.95), 1.0 - saturate(distance(mod(globalTime, 12e2), 300.0) / 300.0));
