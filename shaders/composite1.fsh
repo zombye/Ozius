@@ -61,6 +61,8 @@ uniform sampler2D colortex0, colortex1;
 uniform sampler2D depthtex1;
 
 uniform sampler2DShadow shadowtex0;
+uniform sampler2D shadowtex1;
+uniform sampler2D shadowcolor0;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -69,6 +71,7 @@ uniform sampler2DShadow shadowtex0;
 #include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"
+#include "/lib/util/sumof.glsl"
 
 //--//
 

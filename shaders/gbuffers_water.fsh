@@ -6,7 +6,17 @@
 
 //--// Structs //----------------------------------------------------------------------------------------//
 
+struct materialStruct {
+	vec3  albedo;    // RGB of base texture.
+	float specular;  // Specular R channel. In SEUS v11.0: Specularity
+	float metallic;  // Specular G channel. In SEUS v11.0: Additive rain specularity
+	float roughness; // Specular B channel. In SEUS v11.0: Roughness / Glossiness
+	float clearcoat; // Specular A channel. In SEUS v11.0: Unused
+};
+
 struct surfaceStruct {
+	materialStruct material;
+
 	vec3 normal;
 	vec3 normalGeom;
 
@@ -51,10 +61,12 @@ uniform vec3 cameraPosition;
 
 uniform mat4 shadowModelView, shadowProjection;
 
-uniform sampler2D base;
+uniform sampler2D base, specular;
 uniform sampler2D normals;
 
 uniform sampler2DShadow shadowtex0;
+uniform sampler2D shadowtex1;
+uniform sampler2D shadowcolor0;
 
 uniform sampler2D noisetex;
 
@@ -65,10 +77,25 @@ uniform sampler2D noisetex;
 #include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"
-
+#include "/lib/util/sumof.glsl"
 #include "/lib/util/textureSmooth.glsl"
 
 //--//
+
+materialStruct getMaterial(vec2 uv, out float diffAlpha) {
+	materialStruct material;
+
+	vec3 diff = texture(base,     uv).rgb;
+	vec4 spec = texture(specular, uv);
+
+	material.albedo    = pow(diff.rgb, vec3(GAMMA));
+	material.specular  = spec.r;
+	material.metallic  = spec.g;
+	material.roughness = spec.b;
+	material.clearcoat = spec.a;
+
+	return material;
+}
 
 vec3 getNormal(vec2 coord) {
 	vec3 tsn = texture(normals, coord).rgb;

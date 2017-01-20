@@ -27,7 +27,10 @@ const int colortex7Format = RGBA32F; // Sky
 */
 
 const bool shadowHardwareFiltering0 = true;
-const bool shadowHardwareFiltering1 = true;
+
+const bool shadowtex0Mipmap   = true;
+const bool shadowtex1Mipmap   = true;
+const bool shadowcolor0Mipmap = true;
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 

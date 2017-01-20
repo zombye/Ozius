@@ -179,7 +179,6 @@ vec3 calculateReflection(surfaceStruct surface) {
 
 vec3 waterFog(vec3 col, float dist) {
 	const vec3 waterColor = vec3(0.2, 0.4, 0.9);
-	dist *= 0.4; // density
 	col *= pow(waterColor, vec3(dist));
 	return mix(waterColor * 0.05, col, exp(-dist));
 }

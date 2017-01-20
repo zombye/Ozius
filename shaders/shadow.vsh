@@ -4,6 +4,7 @@
 
 out vec4 tint;
 out vec2 baseUV;
+out float blockID;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -43,6 +44,10 @@ uniform sampler2D noisetex;
 //--//
 
 void main() {
+	if (abs(vertexMetadata.x - 8.5) < 0.6) {
+		gl_Position = vec4(1.0);
+		return;
+	}
 	gl_Position = initPosition();
 	gl_Position = shadowModelViewInverse * gl_Position;
 
@@ -56,6 +61,6 @@ void main() {
 	gl_Position.xy /= 1.0 + length(gl_Position.xy);
 	gl_Position.z  *= 0.25;
 
-	tint   = vertexColor;
-	baseUV = vertexUV;
+	tint    = vertexColor;
+	baseUV  = vertexUV;
 }
