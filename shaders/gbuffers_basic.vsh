@@ -9,10 +9,6 @@ out vec4 color;
 layout (location = 0) in vec4 vertexPosition;
 layout (location = 3) in vec4 vertexColor;
 
-//--// Uniforms //---------------------------------------------------------------------------------------//
-
-//uniform mat4 gbufferProjection;
-
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/gbuffers/initPosition.vsh"

@@ -88,13 +88,10 @@ uniform sampler2D depthtex1;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
-#include "/lib/illuminance.glsl"
-#include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"
 
 #include "/lib/util/hammersley.glsl"
-#include "/lib/util/sumof.glsl"
 
 //--//
 
@@ -123,13 +120,14 @@ vec3 viewSpaceToScreenSpace(vec3 viewSpace) {
 vec3 getTemporalNoiseVector(vec2 coord, uint curSample) {
 	coord += hammersley((frameCounter % 100) * RAYTRACE_SAMPLES + curSample, 100 * RAYTRACE_SAMPLES);
 
-	vec3 nv = vec3(
+	vec4 nv = vec4(
 		fract(sin(dot(coord - 1, vec2(12.9898, 78.233))) * 43758.5453),
 		fract(sin(dot(coord, vec2(12.9898, 78.233))) * 43758.5453),
-		fract(sin(dot(coord + 1, vec2(12.9898, 78.233))) * 43758.5453)
+		fract(sin(dot(coord + 1, vec2(12.9898, 78.233))) * 43758.5453),
+		fract(sin(dot(coord + 2, vec2(12.9898, 78.233))) * 43758.5453)
 	);
 
-	return normalize(nv * 2.0 - 1.0);
+	return normalize(nv.xyz * 2.0 - 1.0) * (nv.w * 0.5 + 0.5);
 }
 
 //--//
@@ -175,12 +173,12 @@ vec3 raytrace(surfaceStruct surface) {
 
 	for (uint i = 0; i < RAYTRACE_SAMPLES; i++) {
 		vec3 diffuse = surface.material.diffuse;
+		vec3 hitCoord;
+		vec3 hitPos;
 
 		vec3 vector = getTemporalNoiseVector(fragCoord, i);
 		if (dot(vector, surface.normal) < 0) vector = -vector;
 
-		vec3 hitCoord;
-		vec3 hitPos;
 		materialStruct hitMaterial;
 		if (raytraceIntersection(surface.positionView, vector, hitCoord, hitPos)) {
 			hitMaterial = getMaterial(hitCoord.st);

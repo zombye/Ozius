@@ -1,5 +1,9 @@
 #version 420 compatibility
 
+//--// Configuration //----------------------------------------------------------------------------------//
+
+#define TEMPORAL_AA
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 out mat3 tbnMatrix;
@@ -13,28 +17,20 @@ layout (location = 0)  in vec4 vertexPosition;
 layout (location = 2)  in vec3 vertexNormal;
 layout (location = 3)  in vec4 vertexColor;
 layout (location = 8)  in vec2 vertexUV;
-layout (location = 9)  in vec2 vertexLightmap;
 layout (location = 10) in vec4 vertexMetadata;
-layout (location = 11) in vec2 quadMidUV;
 layout (location = 12) in vec4 vertexTangent;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform float rainStrength;
+#ifdef TEMPORAL_AA
+uniform int frameCounter;
 
-uniform vec3 cameraPosition;
-
-uniform mat4 gbufferModelView, gbufferProjection;
-uniform mat4 gbufferModelViewInverse;
-
-uniform sampler2D noisetex;
+uniform float viewWidth, viewHeight;
+#endif
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
-#include "/lib/preprocess.glsl"
-#include "/lib/time.glsl"
-
-#include "/lib/util/textureSmooth.glsl"
+#include "/lib/util/hammersley.glsl"
 
 //--//
 
@@ -52,21 +48,16 @@ mat3 calculateTBN() {
 
 //--//
 
-#include "/lib/gbuffers/displacement.vsh"
-
-//--//
-
 void main() {
 	gl_Position = initPosition();
-	vec4 positionLocal = gbufferModelViewInverse * gl_Position;
-	vec4 positionWorld = positionLocal + vec4(cameraPosition, 0.0);
-	calculateDisplacement(positionWorld.xyz);
-	positionLocal = positionWorld - vec4(cameraPosition, 0.0);
-	gl_Position = gbufferModelView * positionLocal;
 	gl_Position = gl_ProjectionMatrix * gl_Position;
 
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;
 	baseUV    = vertexUV;
 	blockID   = vertexMetadata.x;
+
+	#ifdef TEMPORAL_AA
+	gl_Position.xy += ((hammersley(uint(mod(frameCounter, 16)), 16) * 2.0 - 1.0) / vec2(viewWidth, viewHeight)) * gl_Position.w;
+	#endif
 }

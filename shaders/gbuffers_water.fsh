@@ -21,10 +21,6 @@ uniform sampler2D base;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
-#include "/lib/preprocess.glsl"
-
-//--//
-
 void main() {
 	data0 = texture(base, baseUV) * tint;
 	if (data0.a == 0.0) discard;
