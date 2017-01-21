@@ -5,6 +5,7 @@
 #include "/cfg/global.scfg"
 
 #define RAYTRACE_SAMPLES 1 // [1 2 4 8 16]
+#define RAYTRACE_BOUNCES 2 // [1 2 4]
 
 //--// Misc
 
@@ -92,6 +93,7 @@ uniform sampler2D depthtex1;
 #include "/lib/util/packing/normal.glsl"
 
 #include "/lib/util/hammersley.glsl"
+#include "/lib/util/noise.glsl"
 
 //--//
 
@@ -117,15 +119,11 @@ vec3 viewSpaceToScreenSpace(vec3 viewSpace) {
 
 //--//
 
-vec3 getTemporalNoiseVector(vec2 coord, uint curSample) {
+vec3 getTemporalNoiseVector(vec2 coord, uint curSample, uint curBounce) {
 	coord += hammersley((frameCounter % 100) * RAYTRACE_SAMPLES + curSample, 100 * RAYTRACE_SAMPLES);
+	coord += vec2(1,-1) * curBounce;
 
-	vec4 nv = vec4(
-		fract(sin(dot(coord - 1, vec2(12.9898, 78.233))) * 43758.5453),
-		fract(sin(dot(coord, vec2(12.9898, 78.233))) * 43758.5453),
-		fract(sin(dot(coord + 1, vec2(12.9898, 78.233))) * 43758.5453),
-		fract(sin(dot(coord + 2, vec2(12.9898, 78.233))) * 43758.5453)
-	);
+	vec4 nv = noise4(coord);
 
 	return normalize(nv.xyz * 2.0 - 1.0) * (nv.w * 0.5 + 0.5);
 }
@@ -138,22 +136,26 @@ vec3 raytrace(surfaceStruct surface) {
 	vec3 result = surface.material.emission;
 
 	for (uint i = 0; i < RAYTRACE_SAMPLES; i++) {
-		vec3 diffuse = surface.material.diffuse;
-		vec3 hitCoord;
-		vec3 hitPos;
+		vec3 diffuse   = surface.material.diffuse;
+		vec3 hitCoord  = surface.positionScreen;
+		vec3 hitPos    = surface.positionView;
+		vec3 hitNormal = surface.normal;
 
-		vec3 vector = getTemporalNoiseVector(fragCoord, i);
-		if (dot(vector, surface.normal) < 0) vector = -vector;
+		for (uint j = 0; j < RAYTRACE_BOUNCES; j++) {
+			vec3 vector = getTemporalNoiseVector(fragCoord, i, j);
+			vector *= sign(dot(vector, hitNormal));
 
-		materialStruct hitMaterial;
-		if (raytraceIntersection(surface.positionView, vector, hitCoord, hitPos)) {
-			hitMaterial = getMaterial(hitCoord.st);
-		} else {
-			hitMaterial = emptyMaterial;
+			materialStruct hitMaterial;
+			if (raytraceIntersection(hitPos, vector, hitCoord, hitPos)) {
+				hitMaterial = getMaterial(hitCoord.st);
+				hitNormal   = getNormal(hitCoord.st);
+			} else {
+				break;
+			}
+
+			result += diffuse * hitMaterial.emission;
+			diffuse *= hitMaterial.diffuse;
 		}
-
-		result += diffuse * hitMaterial.emission;
-		diffuse *= hitMaterial.diffuse;
 	}
 	result /= RAYTRACE_SAMPLES;
 
