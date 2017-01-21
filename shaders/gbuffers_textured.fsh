@@ -16,10 +16,9 @@ layout (location = 1) out vec4 packedData;
 in mat3 tbnMatrix;
 in vec4 tint;
 in vec2 baseUV, lmUV;
+in float blockID;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
-
-uniform vec3 shadowLightPosition;
 
 uniform sampler2D base, specular;
 uniform sampler2D normals;
@@ -37,14 +36,15 @@ vec3 getNormal(vec2 coord) {
 void main() {
 	vec4 albedo = texture(base, baseUV) * tint;
 	if (albedo.a < 0.102) discard; // ~ 26 / 255
-
 	vec4 spec = texture(specular, baseUV);
+
+	bool isEmissive = (abs(blockID - 500) < 0.1);
 
 	//--//
 
-	packedMaterial.r = uintBitsToFloat(packUnorm4x8(vec4(albedo.rgb, sign(dot(tbnMatrix[2], shadowLightPosition)))));
+	packedMaterial.r = uintBitsToFloat(packUnorm4x8(vec4(albedo.rgb, 0.0)));
 	packedMaterial.g = uintBitsToFloat(packUnorm4x8(spec));
-	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(0.0, 0.0, 0.0, 1.0)));
+	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(albedo.rgb * float(isEmissive), 0.0)));
 	packedMaterial.a = 1.0;
 
 	packedData.r = packNormal(getNormal(baseUV));

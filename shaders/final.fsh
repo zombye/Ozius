@@ -16,7 +16,7 @@ in vec2 fragCoord;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform sampler2D colortex5;
+uniform sampler2D colortex3;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -39,7 +39,7 @@ void dither(inout vec3 color) {
 }
 
 void main() {
-	finalColor = texture(colortex5, fragCoord).rgb;
+	finalColor = texture(colortex3, fragCoord).rgb;
 
 	tonemap(finalColor);
 	dither(finalColor);
