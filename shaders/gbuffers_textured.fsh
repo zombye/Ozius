@@ -22,25 +22,27 @@ uniform sampler2D normals;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 vec3 getNormal(vec2 coord) {
-	vec3 tsn = texture(normals, coord).rgb;
-	tsn.xy += 0.5 / 255.0; // Need to add this for correct results.
+	vec2 compNorm = texture(normals, coord, -2).rg;
+	compNorm += 0.5 / 255.0; // Need to add this for correct results.
+
+	vec3 tsn = vec3(compNorm, sqrt(1.0 - dot(compNorm, compNorm)));
 	return tbnMatrix * normalize(tsn * 2.0 - 1.0);
 }
 
 #include "/lib/util/packing/normal.glsl"
 
 void main() {
-	vec4 albedo = texture(base, baseUV) * tint;
-	if (albedo.a < 0.102) discard; // ~ 26 / 255
-	vec4 spec = texture(specular, baseUV);
-
-	bool isEmissive = (abs(blockID - 500) < 0.1);
+	vec4 diff = texture(base, baseUV, -2) * tint;
+	if (diff.a < 0.102) discard; // ~ 26 / 255
+	diff.a = texture(normals, baseUV, -2).b; // roughness
+	vec4 spec = texture(specular, baseUV, -2);
+	vec4 emis = vec4(diff.rgb * float(abs(blockID - 500) < 0.1), 0.0);
 
 	//--//
 
-	packedMaterial.r = uintBitsToFloat(packUnorm4x8(vec4(albedo.rgb, 0.0)));
+	packedMaterial.r = uintBitsToFloat(packUnorm4x8(diff));
 	packedMaterial.g = uintBitsToFloat(packUnorm4x8(spec));
-	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(albedo.rgb * float(isEmissive), 0.0)));
+	packedMaterial.b = uintBitsToFloat(packUnorm4x8(emis));
 	packedMaterial.a = 1.0;
 
 	packedData.r = packNormal(getNormal(baseUV));

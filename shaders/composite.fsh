@@ -27,9 +27,11 @@ const bool colortex4Clear = false;
 struct materialStruct {
 	vec3 diffuse;  // RGB of base texture.
 	vec3 specular; // RGB of specular texture.
-	vec3 emission; // A of specular texture, currently same color as diffuse.
+	vec3 emission; // Currently not controlled by a texture and is same color as diffuse.
+	
+	float roughness; // B of normal texture.
 };
-const materialStruct emptyMaterial = materialStruct(vec3(0.0), vec3(0.0), vec3(0.0));
+const materialStruct emptyMaterial = materialStruct(vec3(0.0), vec3(0.0), vec3(0.0), 0.0);
 
 struct surfaceStruct {
 	materialStruct material;
@@ -119,6 +121,23 @@ vec3 viewSpaceToScreenSpace(vec3 viewSpace) {
 
 //--//
 
+vec3 f0ToIOR(vec3 f0) {
+	f0 = sqrt(f0);
+	return (1.0 + f0) / (1.0 - f0);
+}
+
+vec3 fresnel(float cosTheta, vec3 f0) {
+	float n1 = 1.0;
+	vec3 n2 = f0ToIOR(f0);
+
+	float sinTheta = sin(acos(cosTheta));
+	vec3 p = ((n1 / n2) * sinTheta); p = sqrt(1.0 - (p * p));
+
+	vec3 rs = ((n1 * cosTheta) - (n2 * p)) / ((n1 * cosTheta) + (n2 * p)); rs *= rs;
+	vec3 rp = ((n1 * p) - (n2 * cosTheta)) / ((n1 * p) + (n2 * cosTheta)); rp *= rp;
+	return 0.5 * (rs + rp);
+}
+
 vec3 getTemporalNoiseVector(vec2 coord, uint curSample, uint curBounce) {
 	coord += hammersley((frameCounter % 100) * RAYTRACE_SAMPLES + curSample, 100 * RAYTRACE_SAMPLES);
 	coord += vec2(1,-1) * curBounce;
@@ -126,6 +145,14 @@ vec3 getTemporalNoiseVector(vec2 coord, uint curSample, uint curBounce) {
 	vec4 nv = noise4(coord);
 
 	return normalize(nv.xyz * 2.0 - 1.0) * (nv.w * 0.5 + 0.5);
+}
+bool isSpecularBounce(vec2 coord, uint curSample, uint curBounce, vec3 reflectance) {
+	coord += hammersley((frameCounter % 100) * RAYTRACE_SAMPLES + curSample, 100 * RAYTRACE_SAMPLES);
+	coord += vec2(1,-1) * curBounce;
+
+	if (all(greaterThan(vec3(noise1(coord)), reflectance))) return false;
+
+	return true;
 }
 
 //--//
@@ -136,16 +163,23 @@ vec3 raytrace(surfaceStruct surface) {
 	vec3 result = surface.material.emission;
 
 	for (uint i = 0; i < RAYTRACE_SAMPLES; i++) {
-		vec3 diffuse   = surface.material.diffuse;
+		materialStruct hitMaterial = surface.material;
+
+		vec3 reflColor = vec3(1.0);
 		vec3 hitCoord  = surface.positionScreen;
 		vec3 hitPos    = surface.positionView;
 		vec3 hitNormal = surface.normal;
+		vec3 vector    = normalize(-surface.positionView);
 
 		for (uint j = 0; j < RAYTRACE_BOUNCES; j++) {
-			vec3 vector = getTemporalNoiseVector(fragCoord, i, j);
+			bool specularBounce = isSpecularBounce(fragCoord, i, j, fresnel(dot(vector, hitNormal), surface.material.specular));
+			reflColor *= mix(hitMaterial.diffuse, hitMaterial.specular, specularBounce);
+
+			vec3 reflectionVector = reflect(vector, hitNormal);
+
+			vector = mix(getTemporalNoiseVector(fragCoord, i, j), reflectionVector, specularBounce);
 			vector *= sign(dot(vector, hitNormal));
 
-			materialStruct hitMaterial;
 			if (raytraceIntersection(hitPos, vector, hitCoord, hitPos)) {
 				hitMaterial = getMaterial(hitCoord.st);
 				hitNormal   = getNormal(hitCoord.st);
@@ -153,8 +187,7 @@ vec3 raytrace(surfaceStruct surface) {
 				break;
 			}
 
-			result += diffuse * hitMaterial.emission;
-			diffuse *= hitMaterial.diffuse;
+			result += reflColor * hitMaterial.emission;
 		}
 	}
 	result /= RAYTRACE_SAMPLES;

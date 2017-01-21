@@ -6,8 +6,10 @@ materialStruct getMaterial(vec2 coord) {
 	vec4 emis = unpackUnorm4x8(floatBitsToUint(textureRaw(colortex0, coord).b));
 
 	material.diffuse   = pow(diff.rgb, vec3(GAMMA));
-	material.specular  = spec.rgb;
+	material.specular  = pow(spec.rgb, vec3(GAMMA));
 	material.emission  = pow(emis.rgb, vec3(GAMMA));
+
+	material.roughness = diff.a;
 
 	return material;
 }

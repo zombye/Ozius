@@ -4,6 +4,10 @@
 
 // These are currently just here so that I actually have some sort of noise function, they will probably be replaced at some point.
 
+float noise1(vec2 coord) {
+	return fract(sin(dot(coord, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 vec4 noise4(vec2 coord) {
 	vec4 dps = vec4(
 		dot(coord - 1.5, vec2(12.9898, 78.233)),
