@@ -159,41 +159,45 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 	vec3  normal = unpackNormal(tex3Raw.r);
 	float skyVis = tex3Raw.b;
 
-	float f;
+	float f = saturate(f_fresnel(dot(normal, -viewDir), 0.02));
 
 	// Reflections
-	vec3 reflection = vec3(0.0);
-	{
+	vec3 reflection = vec3(0.0); {
 		vec3 rayDir = reflect(viewDir, normal);
-
-		f = saturate(f_fresnel(dot(normal, -viewDir), 0.02));
 
 		vec3 hitCoord;
 		vec3 hitPos;
 		if (raytraceIntersection(surface.positionView[0], rayDir, hitCoord, hitPos)) {
 			reflection = texture(colortex5, hitCoord.xy).rgb;
-		} else if (skyVis > 0) {
+		} else if (skyVis > 0 && isEyeInWater == 0) {
 			reflection = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
 		}
 
 		if (isEyeInWater == 1) {
 			reflection = waterFog(reflection, distance(surface.positionView[0], hitPos));
+
+			// Needed because hitPos sometimes gets bad values.
+			if (isnan(reflection.r)) reflection = vec3(0.0);
 		}
 	}
 
 	// Refractions
-	vec3 refraction = vec3(0.0);
-	{
-		// TODO
-		vec3 rayDir = refract(viewDir, normal, isEyeInWater > 0 ? 1.33 : 0.75);
+	vec3 refraction; {
+		vec3 rayDir = refract(viewDir, normal, 0.75);
 
-		vec3 hitCoord = surface.positionScreen[0];
-		vec3 hitPos   = surface.positionView[1];
+		float refractAmount = saturate(distance(surface.positionView[0], surface.positionView[1]));
 
-		refraction = texture(colortex5, hitCoord.xy).rgb;
+		vec3 hitPos   = rayDir * refractAmount + surface.positionView[1];
+		vec3 hitCoord = viewSpaceToScreenSpace(hitPos);
+
+		if (texture(depthtex1, hitCoord.xy) == 1.0) {
+			refraction = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy);
+		} else {
+			refraction = texture(colortex5, hitCoord.xy).rgb;
+		}
 
 		if (isEyeInWater == 0) {
-			refraction = waterFog(refraction, distance(surface.positionView[0], hitPos));
+			refraction = waterFog(refraction, distance(surface.positionView[0], hitPos) - refractAmount);
 		}
 	}
 
@@ -202,6 +206,9 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 	if (isEyeInWater == 1) {
 		waterShading = waterFog(waterShading, length(surface.positionView[0]));
 	}
+
+	// Account for water needing some opacity to actually render at all
+	waterShading /= 0.8;
 
 	return waterShading;
 }
