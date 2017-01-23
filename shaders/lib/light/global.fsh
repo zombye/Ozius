@@ -39,7 +39,7 @@ float diffuseOrenNayar(vec3 light, vec3 normal, vec3 view, float roughness) {
 }
 #define calculateDiffuse(x, y, z, w) diffuseOrenNayar(x, y, z, w)
 
-#define SHADOW_SAMPLING_TYPE 1 // 0 = Single sample. 1 = 3x3 soft shadow samples. [0 1 2]
+#define SHADOW_SAMPLING_TYPE 1 // 0 = Single sample. 1 = 12-sample soft shadows. 2 = PCSS. [0 1 2]
 
 #if SHADOW_SAMPLING_TYPE == 0
 vec3 sampleShadows(vec3 coord) {
@@ -78,42 +78,38 @@ vec3 sampleShadowsSoft(vec3 coord) {
 #elif SHADOW_SAMPLING_TYPE == 2
 vec3 sampleShadowsPCSS(vec3 coord, float distortCoeff) {
 	const float texelSize = 1.0 / textureSize(shadowtex0, 0).x;
-	float pcssSpread = 0.2 / distortCoeff;
+	float spread = 0.15 / distortCoeff;
 
-	const vec2[61] offset = vec2[61](
-		                                       vec2( 4,-1), vec2( 4, 0), vec2( 4, 1),
-		             vec2( 3,-3), vec2( 3,-2), vec2( 3,-1), vec2( 3, 0), vec2( 3, 1), vec2( 3, 2), vec2( 3, 3),
-		             vec2( 2,-3), vec2( 2,-2), vec2( 2,-1), vec2( 2, 0), vec2( 2, 1), vec2( 2, 2), vec2( 2, 3),
-		vec2( 1,-4), vec2( 1,-3), vec2( 1,-2), vec2( 1,-1), vec2( 1, 0), vec2( 1, 1), vec2( 1, 2), vec2( 1, 3), vec2( 1, 4),
-		vec2( 0,-4), vec2( 0,-3), vec2( 0,-2), vec2( 0,-1), vec2( 0, 0), vec2( 0, 1), vec2( 0, 2), vec2( 0, 3), vec2( 0, 4),
-		vec2(-1,-4), vec2(-1,-3), vec2(-1,-2), vec2(-1,-1), vec2(-1, 0), vec2(-1, 1), vec2(-1, 2), vec2(-1, 3), vec2(-1, 4),
-		             vec2(-2,-3), vec2(-2,-2), vec2(-2,-1), vec2(-2, 0), vec2(-2, 1), vec2(-2, 2), vec2(-2, 3),
-		             vec2(-3,-3), vec2(-3,-2), vec2(-3,-1), vec2(-3, 0), vec2(-3, 1), vec2(-3, 2), vec2(-3, 3),
-		                                       vec2(-4,-1), vec2(-4, 0), vec2(-4, 1)
-	);
+	float ang = noise1(gl_FragCoord.st) * TAU;
+	mat2  rot = mat2(cos(ang), sin(ang), -sin(ang), cos(ang));
 
 	float depthAverage = 0.0;
-	for (int i = 0; i < offset.length(); i++) {
-		vec4 depthSamples = textureGather(shadowtex1, coord.xy + (offset[i] * texelSize * 3 / distortCoeff));
-		depthAverage += sumof(max(vec4(0.0), coord.z - depthSamples));
+	float searchScale = 8.0 * texelSize / distortCoeff;
+	for (float i = -1.5; i <= 1.5; i++) {
+		for (float j = -1.5; j <= 1.5; j++) {
+			float depthSample = coord.z - textureLod(shadowtex1, coord.xy + (vec2(i, j) * searchScale), 3).r;
+			depthAverage += clamp(depthSample, 0.0, 32.0 / 1024.0);
+		}
 	}
-	depthAverage /= offset.length();
+	depthAverage /= 16;
 
-	float penumbraSize = max(depthAverage * pcssSpread, texelSize.x);
+	float penumbraSize = max(depthAverage * spread, texelSize.x * 2.0);
 
 	float shadow0     = 0.0;
 	float shadow1     = 0.0;
 	vec3  shadowColor = vec3(0.0);
-	for (int i = 0; i < offset.length(); i++) {
-		vec3 sampleCoord = vec3(coord.xy + (offset[i] * penumbraSize * 0.25), coord.p);
+	for (int i = -4; i < 4; i++) {
+		for (int j = -4; j < 4; j++) {
+			vec3 sampleCoord = vec3(coord.xy + (vec2(i, j) * penumbraSize * rot / 4), coord.p);
 
-		shadow0     += textureLod(shadowtex0, sampleCoord, penumbraSize);
-		shadow1     += float(textureLod(shadowtex1, sampleCoord.xy, penumbraSize).r > coord.z);
-		shadowColor += textureLod(shadowcolor0, sampleCoord.xy, penumbraSize).rgb;
+			shadow0     += textureLod(shadowtex0, sampleCoord, penumbraSize);
+			shadow1     += float(textureLod(shadowtex1, sampleCoord.xy, penumbraSize).r > coord.z);
+			shadowColor += textureLod(shadowcolor0, sampleCoord.xy, penumbraSize).rgb;
+		}
 	}
-	shadow0 /= offset.length(); shadow0 *= shadow0;
-	shadow1 /= offset.length();
-	shadowColor /= offset.length();
+	shadow0     /= pow(9, 2.0);
+	shadow1     /= pow(9, 2.0);
+	shadowColor /= pow(9, 2.0);
 
 	return mix(vec3(shadow0), shadowColor, shadow1 > sign(shadow0));
 }
@@ -155,9 +151,9 @@ vec3 calculateGlobalLight(surfaceStruct surface) {
 	float diffuse = calculateDiffuse(normalize(shadowLightPosition), surface.normal, normalize(-surface.positionView), surface.material.roughness);
 	vec3 shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
 
-	vec3 sunlightColor = mix(vec3(1.0, 0.6, 0.2) * 0.4, vec3(1.0, 0.96, 0.95), 1.0 - saturate(distance(mod(globalTime, 12e2), 300.0) / 300.0));
+	vec3 sunlightColor = mix(vec3(1.0, 0.6, 0.2) * 0.4, vec3(1.0, 0.96, 0.95), 1.0 - saturate(distance(mod(float(worldTime), 24e3), 6000.0) / 6000.0));
 
-	vec3 light = mix(0.2 * vec3(1.0, 0.9, 0.85), ILLUMINANCE_SUN * sunlightColor, mod(globalTime, 12e2) < 600.0);
+	vec3 light = mix(0.2 * vec3(1.0, 0.9, 0.85), ILLUMINANCE_SUN * sunlightColor, mod(float(worldTime), 24e3) < 12e3);
 	light *= diffuse * shadows;
 
 	return light;

@@ -71,6 +71,7 @@ uniform sampler2D shadowcolor0;
 #include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"
+#include "/lib/util/noise.glsl"
 #include "/lib/util/sumof.glsl"
 
 //--//
@@ -128,5 +129,6 @@ void main() {
 	light.sky   = calculateSkyLight(light.engine.y);
 	light.block = calculateBlockLight(light.engine.x);
 
-	composite = surface.material.albedo * (light.global + light.sky + light.block);
+	composite = light.global + light.sky + light.block;
+	composite *= surface.material.albedo;
 }

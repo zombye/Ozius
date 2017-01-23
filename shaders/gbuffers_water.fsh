@@ -77,6 +77,7 @@ uniform sampler2D noisetex;
 #include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"
+#include "/lib/util/noise.glsl"
 #include "/lib/util/sumof.glsl"
 #include "/lib/util/textureSmooth.glsl"
 

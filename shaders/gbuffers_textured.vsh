@@ -17,7 +17,7 @@ layout (location = 12) in vec4 vertexTangent;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-//uniform mat4 gbufferProjection;
+uniform mat4 gbufferProjection;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -34,7 +34,7 @@ mat3 calculateTBN() {
 }
 
 void main() {
-	gl_Position = gl_ProjectionMatrix * initPosition();
+	gl_Position = gbufferProjection * initPosition();
 
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;

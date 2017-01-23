@@ -65,7 +65,7 @@ void main() {
 	calculateDisplacement(positionWorld.xyz);
 	positionLocal = positionWorld - vec4(cameraPosition, 0.0);
 	gl_Position = gbufferModelView * positionLocal;
-	gl_Position = gl_ProjectionMatrix * gl_Position;
+	gl_Position = gbufferProjection * gl_Position;
 
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;

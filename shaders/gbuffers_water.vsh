@@ -43,7 +43,7 @@ void main() {
 	gl_Position = initPosition();
 	positionView  = gl_Position.xyz;
 	positionLocal = (gbufferModelViewInverse * gl_Position).xyz;
-	gl_Position = gl_ProjectionMatrix * gl_Position;
+	gl_Position = gbufferProjection * gl_Position;
 
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;
