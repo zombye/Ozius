@@ -144,9 +144,11 @@ vec3 calculateReflection(surfaceStruct surface) {
 //--//
 
 vec3 waterFog(vec3 col, float dist) {
-	const vec3 waterColor = vec3(0.2, 0.4, 0.9);
-	col *= pow(waterColor, vec3(dist));
-	return mix(waterColor * 0.05, col, exp(-dist));
+	const vec3  fogColor   = vec3(0.1, 0.6, 0.9);
+	const float fogBright  = 4e2;
+	const float fogDensity = 0.4;
+
+	return mix(fogColor * fogBright, col, exp(-dist * (fogDensity / fogColor)));
 }
 
 vec3 calculateWaterShading(surfaceStruct surface) {
@@ -224,6 +226,10 @@ void main() {
 			composite = calculateWaterShading(surface);
 		} else {
 			composite = getSky(normalize(surface.positionLocal[0].xzy));
+
+			if (isEyeInWater == 1) {
+				composite = waterFog(composite, length(surface.positionView[0]));
+			}
 		}
 
 		vec4 trans = texture(colortex2, fragCoord);
