@@ -4,6 +4,8 @@
 
 #include "/cfg/global.scfg"
 
+#include "/cfg/bloom.scfg"
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 /* DRAWBUFFERS:0 */
@@ -16,9 +18,45 @@ in vec2 fragCoord;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
+#ifdef BLOOM
+uniform float viewWidth, viewHeight;
+#endif
+
+#ifdef BLOOM
+uniform sampler2D colortex4;
+#endif
 uniform sampler2D colortex5;
 
 //--// Functions //--------------------------------------------------------------------------------------//
+
+#ifdef BLOOM
+void applyBloom(inout vec3 color) {
+	const float[7] weight = float[7](
+		pow(1, -BLOOM_CURVE),
+		pow(2, -BLOOM_CURVE),
+		pow(3, -BLOOM_CURVE),
+		pow(4, -BLOOM_CURVE),
+		pow(5, -BLOOM_CURVE),
+		pow(6, -BLOOM_CURVE),
+		pow(7, -BLOOM_CURVE)
+	);
+	const float weights = weight[0] + weight[1] + weight[2] + weight[3] + weight[4] + weight[5] + weight[6];
+
+	vec2 px = 1.0 / vec2(viewWidth, viewHeight);
+
+	vec3
+	bloom  = texture(colortex4, (fragCoord / exp2(1)) + vec2(0.00000           , 0.00000           )).rgb * weight[0];
+	bloom += texture(colortex4, (fragCoord / exp2(2)) + vec2(0.00000           , 0.50000 + px.y * 1)).rgb * weight[1];
+	bloom += texture(colortex4, (fragCoord / exp2(3)) + vec2(0.25000 + px.x * 1, 0.50000 + px.y * 1)).rgb * weight[2];
+	bloom += texture(colortex4, (fragCoord / exp2(4)) + vec2(0.25000 + px.x * 1, 0.62500 + px.y * 2)).rgb * weight[3];
+	bloom += texture(colortex4, (fragCoord / exp2(5)) + vec2(0.31250 + px.x * 2, 0.62500 + px.y * 2)).rgb * weight[4];
+	bloom += texture(colortex4, (fragCoord / exp2(6)) + vec2(0.31250 + px.x * 2, 0.65625 + px.y * 3)).rgb * weight[5];
+	bloom += texture(colortex4, (fragCoord / exp2(7)) + vec2(0.46875 + px.x * 3, 0.65625 + px.y * 3)).rgb * weight[6];
+	bloom /= weights;
+
+	color = mix(color, bloom, BLOOM_AMOUNT * 0.5);
+}
+#endif
 
 void tonemap(inout vec3 color) {
 	color *= color;
@@ -40,6 +78,10 @@ void dither(inout vec3 color) {
 
 void main() {
 	finalColor = texture(colortex5, fragCoord).rgb;
+
+	#ifdef BLOOM
+	applyBloom(finalColor);
+	#endif
 
 	tonemap(finalColor);
 	dither(finalColor);

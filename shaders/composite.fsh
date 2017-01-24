@@ -20,7 +20,7 @@ const int colortex0Format = RGBA32F; // Material
 const int colortex1Format = RGBA32F; // Normals, lightmap
 const int colortex2Format = RGBA32F; // Transparent surfaces
 const int colortex3Format = RGBA32F; // Water data
-
+const int colortex4Format = RGBA32F;
 const int colortex5Format = RGBA32F;
 
 const int colortex7Format = RGBA32F; // Sky
