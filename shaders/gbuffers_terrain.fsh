@@ -25,6 +25,8 @@ in mat3 tbnMatrix;
 in vec4 tint;
 in vec2 baseUV, lmUV;
 
+in float isMetal;
+
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
 uniform vec3 shadowLightPosition;
@@ -68,7 +70,7 @@ vec3 calculateParallaxCoord(vec2 coord, vec3 dir) {
 
 	return vec3((fract(tcoord.xy + offset.xy) + tcoord.zw) / atlasTiles, offset.z);
 	#else
-	return coord;
+	return vec3(coord, 1.0);
 	#endif
 }
 
@@ -112,22 +114,22 @@ vec3 getNormal(vec2 coord) {
 void main() {
 	vec3 pCoord = calculateParallaxCoord(baseUV, normalize(positionView) * tbnMatrix);
 
-	vec4 albedo = texture(base, pCoord.st) * tint;
-	if (albedo.a < 0.102) discard; // ~ 26 / 255
+	vec4 baseTex = texture(base, pCoord.st) * tint;
+	if (baseTex.a < 0.102) discard; // ~ 26 / 255
+	vec4 specTex = texture(specular, pCoord.st);
 
-	vec4 spec = texture(specular, pCoord.st);
-
-	float parallaxShadow = calculateParallaxSelfShadow(pCoord, normalize(shadowLightPosition * tbnMatrix));
+	vec4 diff = vec4(mix(baseTex.rgb, vec3(0.0), isMetal), 1.0);
+	vec4 spec = vec4(mix(specTex.rrr, baseTex.rgb, isMetal), specTex.b);
 
 	//--//
 
-	packedMaterial.r = uintBitsToFloat(packUnorm4x8(vec4(albedo.rgb, parallaxShadow)));
+	packedMaterial.r = uintBitsToFloat(packUnorm4x8(diff));
 	packedMaterial.g = uintBitsToFloat(packUnorm4x8(spec));
 	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(0.0, 0.0, 0.0, 1.0)));
 	packedMaterial.a = 1.0;
 
 	packedData.r = packNormal(getNormal(pCoord.st));
 	packedData.g = packNormal(tbnMatrix[2]);
-	packedData.b = 1.0;
+	packedData.b = calculateParallaxSelfShadow(pCoord, normalize(shadowLightPosition * tbnMatrix));;
 	packedData.a = uintBitsToFloat(packUnorm2x16(lmUV));
 }

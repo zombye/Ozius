@@ -35,14 +35,16 @@ vec3 getNormal(vec2 coord) {
 #include "/lib/util/packing/normal.glsl"
 
 void main() {
-	vec4 albedo = texture(base, baseUV) * tint;
-	if (albedo.a < 0.102) discard; // ~ 26 / 255
+	vec4 baseTex = texture(base, baseUV) * tint;
+	if (baseTex.a < 0.102) discard; // ~ 26 / 255
+	vec4 specTex = texture(specular, baseUV);
 
-	vec4 spec = texture(specular, baseUV);
+	vec4 diff = vec4(baseTex.rgb, 1.0);
+	vec4 spec = vec4(specTex.rrr, specTex.b);
 
 	//--//
 
-	packedMaterial.r = uintBitsToFloat(packUnorm4x8(vec4(albedo.rgb, sign(dot(tbnMatrix[2], shadowLightPosition)))));
+	packedMaterial.r = uintBitsToFloat(packUnorm4x8(diff));
 	packedMaterial.g = uintBitsToFloat(packUnorm4x8(spec));
 	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(0.0, 0.0, 0.0, 1.0)));
 	packedMaterial.a = 1.0;

@@ -4,18 +4,16 @@
 
 #include "/cfg/global.scfg"
 
+#define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
+#define REFLECTION_BOUNCES 1 // [1 2]
+
 //--// Structs //----------------------------------------------------------------------------------------//
 
 struct materialStruct {
-	vec3  albedo;    // RGB of base texture.
-	float specular;  // Specular R channel. In SEUS v11.0: Specularity
-	float metallic;  // Specular G channel. In SEUS v11.0: Additive rain specularity
-	float roughness; // Specular B channel. In SEUS v11.0: Roughness / Glossiness
-	float clearcoat; // Specular A channel. In SEUS v11.0: Unused
-	float dR;
-	float dG;
-	float dB;
-	float dA;
+	vec3 albedo;   // RGB of base texture.
+	vec3 specular; // Currently R of specular texture.
+
+	float roughness; // Currently B of specular texture
 };
 
 struct surfaceStruct {
@@ -65,6 +63,7 @@ uniform sampler2D depthtex0, depthtex1;
 #include "/lib/preprocess.glsl"
 
 #include "/lib/util/packing/normal.glsl"
+#include "/lib/util/noise.glsl"
 
 //--//
 
@@ -98,45 +97,57 @@ vec3 getSky(vec3 dir) {
 
 //--//
 
-float f0ToIOR(float f0) {
+vec3 f0ToIOR(vec3 f0) {
 	f0 = sqrt(f0);
 	return (1.0 + f0) / (1.0 - f0);
 }
 
 #include "/lib/reflectanceModels.glsl"
 
+//--//
+
 #include "/lib/composite/raytracer.fsh"
 
-vec3 calculateReflection(surfaceStruct surface) {
-	vec3 viewDir = normalize(surface.positionView[1]);
+vec3 is(vec3 normal, vec3 noise, float roughness) {
+	return normalize(normal + (noise * roughness));
+}
 
+vec3 calculateReflection(surfaceStruct surface) {
 	float skyVis = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a)).y;
 
 	vec3 reflection = vec3(0.0);
-	const uint samples = 1;
-	const uint bounces = 1;
+	const uint samples = REFLECTION_SAMPLES;
+	const uint bounces = REFLECTION_BOUNCES;
 	for (uint i = 0; i < samples; i++) {
-		vec3 normal = surface.normal;
-		vec3 rayDir = reflect(viewDir, normal);
-		for (uint j = 0; j < bounces; j++) {
-			// TODO
+		vec3 rayDir = normalize(surface.positionView[1]);
 
-			if (j < bounces) {
-				// Get info required for next raytrace
+		materialStruct hitMaterial = surface.material;
+		vec3 hitNormal = is(surface.normal, normalize(noise3(fragCoord + i) * 2.0 - 1.0), hitMaterial.roughness);
+
+		vec3 reflColor = vec3(1.0);
+		vec3 hitCoord  = surface.positionScreen[1];
+		vec3 hitPos    = surface.positionView[1];
+
+		for (uint j = 0; j < bounces; j++) {
+			reflColor *= f_fresnel(max(dot(hitNormal, -rayDir), 0.0), hitMaterial.specular);
+			if (reflColor == 0.0) break;
+
+			rayDir = reflect(rayDir, hitNormal);
+
+			if (raytraceIntersection(hitPos, rayDir, hitCoord, hitPos)) {
+				reflection += texture(colortex5, hitCoord.st).rgb * reflColor;
+			} else if (skyVis > 0) {
+				reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis * reflColor;
+			}
+
+			if (i < samples) {
+				hitMaterial = getMaterial(hitCoord.st);
+				hitNormal   = is(getNormal(hitCoord.st), normalize(noise3(fragCoord + i) * 2.0 - 1.0), hitMaterial.roughness);
 			}
 		}
-
-		float NoO = dot(normal, -viewDir);
-		vec3 mul = mix(vec3(1.0), surface.material.albedo, surface.material.metallic) * f_fresnel(NoO, surface.material.specular);
-
-		vec3 reflectedCoord;
-		vec3 reflectedPos;
-		if (raytraceIntersection(surface.positionView[1], rayDir, reflectedCoord, reflectedPos)) {
-			reflection += texture(colortex5, reflectedCoord.xy).rgb * mul;
-		} else if (skyVis > 0) {
-			reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis * mul;
-		}
 	}
+
+	if (any(isnan(reflection))) reflection = vec3(0.0);
 
 	return reflection / samples;
 }
@@ -159,7 +170,7 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 	vec3  normal = unpackNormal(tex3Raw.r);
 	float skyVis = tex3Raw.b;
 
-	float f = saturate(f_fresnel(dot(normal, -viewDir), 0.02));
+	vec3 f = saturate(f_fresnel(dot(normal, -viewDir), vec3(0.02)));
 
 	// Reflections
 	vec3 reflection = vec3(0.0); {
@@ -253,10 +264,13 @@ void main() {
 	surface.normalGeom = getNormalGeom(fragCoord);
 
 	composite = texture(colortex5, fragCoord).rgb;
-	if (surface.material.specular > 0.0) {
-		composite *= (1.0 - f_fresnel(dot(surface.normal, -normalize(surface.positionView[0])), surface.material.specular));
+
+	#if REFLECTION_SAMPLES > 0
+	if (any(greaterThan(surface.material.specular, vec3(0.0)))) {
+		composite *= saturate(1.0 - f_fresnel(max(dot(surface.normal, -normalize(surface.positionView[0])), 0.0), surface.material.specular));
 		composite += calculateReflection(surface);
 	}
+	#endif
 
 	if (texture(colortex3, fragCoord).a > 0.0) {
 		composite = calculateWaterShading(surface);

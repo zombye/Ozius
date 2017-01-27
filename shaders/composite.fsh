@@ -71,15 +71,23 @@ float rayleighPhase(float cosTheta) {
 }
 
 float atmosphereRelAM(float VoU) {
-	float relAM = pow(1.0 - VoU, 4);
+	float relAM = pow(saturate(1.0 - VoU), 4);
 	return mix(1.0, 8.0, relAM);
 }
-#include "/lib/composite/sky/atmosphere.fsh"
+vec3 skyAtmosphere(vec3 viewVec, vec3 sunVec) {
+	float VoL = dot(viewVec, sunVec);
+	float VoU = dot(viewVec, vec3(0.0, 0.0, 1.0));
 
-#include "/lib/composite/sky/calculateSky.fsh"
+	float mie      = 0.03 * miePhase(VoL);
+	vec3  rayleigh = vec3(0.15, 0.5, 1.0) * rayleighPhase(VoL);
+	return (rayleigh + mie) * atmosphereRelAM(VoU) * 0.5;
+}
 
 //--//
 
 void main() {
-	sky = calculateSky(fragCoord);
+	vec3 dir = equirectangleReverse(fragCoord);
+
+	sky  = skyAtmosphere(dir, normalize(mat3(gbufferModelViewInverse) * shadowLightPosition).xzy);
+	sky *= ILLUMINANCE_SKY;
 }

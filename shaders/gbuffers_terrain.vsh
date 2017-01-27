@@ -7,6 +7,8 @@ out vec3 positionView;
 out mat3 tbnMatrix;
 out vec4 tint;
 out vec2 baseUV, lmUV;
+out float blockID;
+out float isMetal;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -71,4 +73,6 @@ void main() {
 	tint      = vertexColor;
 	baseUV    = vertexUV;
 	lmUV      = vertexLightmap / 256.0;
+	blockID   = vertexMetadata.x;
+	isMetal   = float(abs(blockID - 41.5) < 0.6);
 }

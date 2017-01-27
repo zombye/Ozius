@@ -68,8 +68,6 @@ uniform sampler2DShadow shadowtex0;
 uniform sampler2D shadowtex1;
 uniform sampler2D shadowcolor0;
 
-uniform sampler2D noisetex;
-
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
@@ -79,7 +77,6 @@ uniform sampler2D noisetex;
 #include "/lib/util/packing/normal.glsl"
 #include "/lib/util/noise.glsl"
 #include "/lib/util/sumof.glsl"
-#include "/lib/util/textureSmooth.glsl"
 
 //--//
 
@@ -106,20 +103,67 @@ vec3 getNormal(vec2 coord) {
 
 //--//
 
+float sharpenWave(float wave, float amount) {
+	const float m = 0.1;
+
+	float swave = abs(wave * 2.0 - 1.0);
+	if (swave < 2.0 * m) swave = ((0.25 / m) * swave * swave) + m;
+	return mix(wave, swave, amount);
+}
+float smoothNoise(vec2 coord) {
+	vec2 fr = fract(coord);
+	vec2 fl = floor(coord);
+
+	vec4 ns = vec4(
+		noise1(fl + vec2(-0.5,-0.5)), noise1(fl + vec2( 0.5,-0.5)),
+		noise1(fl + vec2(-0.5, 0.5)), noise1(fl + vec2( 0.5, 0.5))
+	);
+
+	fr *= fr * (3.0 - 2.0 * fr);
+
+	return mix(mix(ns.x, ns.y, fr.x), mix(ns.z, ns.w, fr.x), fr.y);
+}
 float calculateWaterWaves(vec2 pos) {
-	float fbm = 0.0;
-	float scale = 1.0;
+	//--// 
 
-	pos += globalTime;
-	pos /= 128.0;
+	const vec4 aspect = vec4( 1.42, 2.42, 0.83, 1.25);
+	const vec4 height = vec4( 0.01, 0.07, 0.12, 0.20);
+	const vec4 length = vec4( 0.36, 1.26, 1.65, 3.23);
+	const vec4 rotate = vec4(-0.10, 0.30, 0.50, 0.50);
+	const vec4 toxamt = vec4( 0.10, 0.40, 1.50, 1.50); // Need a better name for these two...
+	const vec4 toyamt = vec4(-1.20, 1.10, 1.50, 1.70); // This will have to do for now.
+	const vec4 sharpn = vec4( 0.00, 0.20, 0.00, 0.60);
 
-	for (uint i = 0; i < 5; i++) {
-		fbm -= scale * textureSmooth(noisetex, globalTime * 0.01 + pos).r;
-		pos = mat2(cos(2), sin(2), -sin(2), cos(2)) * (pos + 0.3024) * 2.0;
-		scale *= 0.4;
-	}
+	const vec4 k = TAU / length;
+	const vec4 omega = sqrt(32.0 / k);
 
-	return fbm * 0.1;
+	//--//
+
+	const mat2 r0 = mat2(cos(rotate.x), sin(rotate.x), -sin(rotate.x), cos(rotate.x));
+	const mat2 r1 = mat2(cos(rotate.y), sin(rotate.y), -sin(rotate.y), cos(rotate.y));
+	const mat2 r2 = mat2(cos(rotate.z), sin(rotate.z), -sin(rotate.z), cos(rotate.z));
+	const mat2 r3 = mat2(cos(rotate.w), sin(rotate.w), -sin(rotate.w), cos(rotate.w));
+
+	vec2 p0 = r0 * pos / vec2(1.0, aspect.x);
+	vec2 p1 = r1 * pos / vec2(1.0, aspect.y);
+	vec2 p2 = r2 * pos / vec2(1.0, aspect.z);
+	vec2 p3 = r3 * pos / vec2(1.0, aspect.w);
+
+	vec2 x0 = (k.x * p0) - vec2(omega.x * globalTime, 0.0); x0 += x0.yx * vec2(toxamt.x, toyamt.x);
+	vec2 x1 = (k.y * p1) - vec2(omega.y * globalTime, 0.0); x1 += x1.yx * vec2(toxamt.y, toyamt.y);
+	vec2 x2 = (k.z * p2) - vec2(omega.z * globalTime, 0.0); x2 += x2.yx * vec2(toxamt.z, toyamt.z);
+	vec2 x3 = (k.w * p3) - vec2(omega.w * globalTime, 0.0); x3 += x3.yx * vec2(toxamt.w, toyamt.w);
+
+	float scaler = 1.0 / TAU;
+
+	float wave = 0.0;
+
+	wave -= height.x * sharpenWave(smoothNoise(x0 * scaler).r, sharpn.x);
+	wave -= height.y * sharpenWave(smoothNoise(x1 * scaler).r, sharpn.y);
+	wave -= height.z * sharpenWave(smoothNoise(x2 * scaler).r, sharpn.z);
+	wave -= height.w * sharpenWave(smoothNoise(x3 * scaler).r, sharpn.w);
+
+	return wave;
 }
 vec3 calculateWaterParallax(vec3 pos, vec3 dir) {
 	const int steps = 8;
@@ -138,11 +182,14 @@ vec3 calculateWaterParallax(vec3 pos, vec3 dir) {
 vec3 calculateWaterNormal(vec3 pos, vec3 viewDir) {
 	pos = calculateWaterParallax(pos.xzy, viewDir);
 
-	vec3 p0 = pos + vec3(-0.1,-0.1, 0.0); p0.z += calculateWaterWaves(p0.xy);
-	vec3 p1 = pos + vec3( 0.1,-0.1, 0.0); p1.z += calculateWaterWaves(p1.xy);
-	vec3 p2 = pos + vec3(-0.1, 0.1, 0.0); p2.z += calculateWaterWaves(p2.xy);
+	vec2 diff = vec2(calculateWaterWaves(pos.xy + vec2(0.1,-0.1)),
+	                 calculateWaterWaves(pos.xy - vec2(0.1,-0.1)));
+	     diff = (calculateWaterWaves(pos.xy - 0.1) - diff) * 5.0;
 
-	return normalize(tbnMatrix * cross(p1 - p0, p2 - p0));
+	vec3 normal = tbnMatrix * vec3(diff, sqrt(1.0 - saturate(dot(diff, diff))));
+	     normal = mix(tbnMatrix[2], normal, pow(saturate(dot(normalize(-positionView), normal)), 0.2));
+
+	return normal;
 }
 
 //--//

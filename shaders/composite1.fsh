@@ -2,18 +2,17 @@
 
 //--// Configuration //----------------------------------------------------------------------------------//
 
-#define COMPOSITE
-
 #include "/cfg/global.scfg"
+
+#define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
 
 //--// Structs //----------------------------------------------------------------------------------------//
 
 struct materialStruct {
-	vec3  albedo;    // RGB of base texture.
-	float specular;  // Specular R channel. In SEUS v11.0: Specularity
-	float metallic;  // Specular G channel. In SEUS v11.0: Additive rain specularity
-	float roughness; // Specular B channel. In SEUS v11.0: Roughness / Glossiness
-	float clearcoat; // Specular A channel. In SEUS v11.0: Unused
+	vec3 albedo;   // RGB of base texture.
+	vec3 specular; // Currently R of specular texture.
+
+	float roughness; // Currently B of specular texture
 };
 
 struct surfaceStruct {
@@ -109,15 +108,16 @@ void main() {
 
 	surface.depth.y = surface.positionView.z;
 
-	lightStruct light;
-
-	surface.material = getMaterial(fragCoord, light.pss);
+	surface.material = getMaterial(fragCoord);
 
 	surface.normal     = getNormal(fragCoord);
 	surface.normalGeom = getNormalGeom(fragCoord);
 
 	//--//
 
+	lightStruct light;
+
+	light.pss = texture(colortex1, fragCoord).b;
 	light.engine = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a));
 
 	if (light.pss > 0) {
@@ -130,5 +130,9 @@ void main() {
 	light.block = calculateBlockLight(light.engine.x);
 
 	composite = light.global + light.sky + light.block;
+	#if REFLECTION_SAMPLES > 0
 	composite *= surface.material.albedo;
+	#else
+	composite *= mix(surface.material.albedo, vec3(1.0), surface.material.specular);
+	#endif
 }
