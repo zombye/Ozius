@@ -63,6 +63,7 @@ uniform sampler2D depthtex0, depthtex1;
 #include "/lib/preprocess.glsl"
 
 #include "/lib/util/packing/normal.glsl"
+#include "/lib/util/maxof.glsl"
 #include "/lib/util/noise.glsl"
 
 //--//
@@ -89,10 +90,10 @@ vec3 viewSpaceToScreenSpace(vec3 viewSpace) {
 
 //--//
 
-#include "/lib/projection.glsl"
-
 vec3 getSky(vec3 dir) {
-	return texture(colortex7, equirectangleForward(dir)).rgb;
+	vec2 p = dir.xy * inversesqrt(dir.z * 8.0 + 8.0) * 2.0;
+	p /= maxof(abs(normalize(p)));
+	return texture(colortex7, p * 0.5 + 0.5).rgb;
 }
 
 //--//
