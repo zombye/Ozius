@@ -133,8 +133,8 @@ float calculateWaterWaves(vec2 pos) {
 	//--// 
 
 	const vec4 aspect = vec4( 1.42, 2.42, 0.83, 1.25);
-	const vec4 height = vec4( 0.01, 0.07, 0.12, 0.20);
-	const vec4 length = vec4( 0.36, 1.26, 1.65, 3.23);
+	const vec4 height = vec4( 0.01, 0.03, 0.06, 0.10);
+	const vec4 length = vec4( 0.63, 1.26, 1.65, 3.23);
 	const vec4 rotate = vec4(-0.10, 0.30, 0.50, 0.50);
 	const vec4 toxamt = vec4( 0.10, 0.40, 1.50, 1.50); // Need a better name for these two...
 	const vec4 toyamt = vec4(-1.20, 1.10, 1.50, 1.70); // This will have to do for now.
