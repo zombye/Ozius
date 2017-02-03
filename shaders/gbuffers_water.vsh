@@ -1,5 +1,12 @@
 #version 420 compatibility
 
+//--// Structs //----------------------------------------------------------------------------------------//
+
+struct worldStruct {
+	vec3 globalLightVector;
+	vec3 globalLightColor;
+};
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 out vec3 positionView, positionLocal;
@@ -7,8 +14,9 @@ out vec3 positionView, positionLocal;
 out mat3 tbnMatrix;
 out vec4 tint;
 out vec2 baseUV, lmUV;
-
 out float blockID;
+
+out worldStruct world;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
@@ -22,10 +30,17 @@ layout (location = 12) in vec4 vertexTangent;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform mat4 gbufferProjection;
-uniform mat4 gbufferModelViewInverse;
+uniform float sunAngle;
+
+uniform vec3 shadowLightPosition;
+
+uniform mat4 gbufferProjection, gbufferModelViewInverse;
 
 //--// Functions //--------------------------------------------------------------------------------------//
+
+#include "/lib/illuminance.glsl"
+
+//--//
 
 #include "/lib/gbuffers/initPosition.vsh"
 
@@ -49,6 +64,10 @@ void main() {
 	tint      = vertexColor;
 	baseUV    = vertexUV;
 	lmUV      = vertexLightmap / 256.0;
+	blockID   = vertexMetadata.x;
 
-	blockID = vertexMetadata.x;
+	//--// Fill world struct
+
+	world.globalLightVector = normalize(shadowLightPosition);
+	world.globalLightColor  = mix(vec3(0.2), vec3(ILLUMINANCE_SUN), sunAngle < 0.5);
 }

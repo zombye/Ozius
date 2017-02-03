@@ -35,6 +35,11 @@ struct lightStruct {
 	vec3 block;
 };
 
+struct worldStruct {
+	vec3 globalLightVector;
+	vec3 globalLightColor;
+};
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 /* DRAWBUFFERS:23 */
@@ -49,8 +54,9 @@ in vec3 positionView, positionLocal;
 in mat3 tbnMatrix;
 in vec4 tint;
 in vec2 baseUV, lmUV;
-
 in float blockID;
+
+in worldStruct world;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
@@ -228,7 +234,7 @@ void main() {
 	lightStruct light;
 	light.engine = lmUV;
 
-	light.global = calculateGlobalLight(surface);
+	light.global = calculateGlobalLight(world, surface);
 	light.sky    = calculateSkyLight(light.engine.y);
 	light.block  = calculateBlockLight(light.engine.x);
 

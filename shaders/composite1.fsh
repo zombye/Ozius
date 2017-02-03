@@ -37,6 +37,11 @@ struct lightStruct {
 	vec3 block;
 };
 
+struct worldStruct {
+	vec3 globalLightVector;
+	vec3 globalLightColor;
+};
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 /* DRAWBUFFERS:5 */
@@ -46,6 +51,8 @@ layout (location = 0) out vec3 composite;
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
 in vec2 fragCoord;
+
+in worldStruct world;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
@@ -121,7 +128,7 @@ void main() {
 	light.engine = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a));
 
 	if (light.pss > 0) {
-		light.global = calculateGlobalLight(surface);
+		light.global = calculateGlobalLight(world, surface);
 	} else {
 		light.global = vec3(0.0);
 	}
