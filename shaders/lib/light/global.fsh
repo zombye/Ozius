@@ -39,21 +39,17 @@ float diffuseOrenNayar(vec3 light, vec3 normal, vec3 view, float roughness) {
 }
 #define calculateDiffuse(x, y, z, w) diffuseOrenNayar(x, y, z, w)
 
-#define SHADOW_SAMPLING_TYPE 1 // 0 = Single sample. 1 = 12-sample soft shadows. 2 = PCSS. [0 1 2]
+#define SHADOW_SAMPLING_TYPE 1 // 0 = Single sample. 1 = 21-sample soft shadows. [0 1]
 
 #if SHADOW_SAMPLING_TYPE == 0
-vec3 sampleShadows(vec3 coord) {
-	float shadow0     = textureLod(shadowtex0, coord, 0); shadow0 *= shadow0;
-	float shadow1     = float(textureLod(shadowtex1, coord.xy, 0).r > coord.z);
-	vec3  shadowColor = textureLod(shadowcolor0, coord.xy, 0).rgb;
+float sampleShadows(vec3 coord) {
+	float shadow = texture(shadowtex0, coord);
 
-	return mix(vec3(shadow0), shadowColor, shadow1 > sign(shadow0));
+	return shadow * shadow;
 }
 #elif SHADOW_SAMPLING_TYPE == 1
-vec3 sampleShadowsSoft(vec3 coord) {
-	float shadow0     = 0.0;
-	float shadow1     = 0.0;
-	vec3  shadowColor = vec3(0.0);
+float sampleShadowsSoft(vec3 coord) {
+	float shadow = 0.0;
 
 	const vec2[21] offset = vec2[21](
 		              vec2(-1,  2), vec2(0,  2), vec2(1,  2),
@@ -65,62 +61,20 @@ vec3 sampleShadowsSoft(vec3 coord) {
 
 	for (int i = 0; i < offset.length(); i++) {
 		vec3 offsCoord = coord + vec3(offset[i] / textureSize(shadowtex0, 0), 0);
-		shadow0     += textureLod(shadowtex0, offsCoord, 0);
-		shadow1     += float(textureLod(shadowtex1, offsCoord.xy, 0).r > offsCoord.z);
-		shadowColor += textureLod(shadowcolor0, offsCoord.xy, 0).rgb;
+		shadow += texture(shadowtex0, offsCoord);
 	}
-	shadow0 /= offset.length(); shadow0 *= shadow0;
-	shadow1 /= offset.length();
-	shadowColor /= offset.length();
+	shadow /= offset.length(); shadow *= shadow;
 
-	return mix(vec3(shadow0), shadowColor, shadow1 > sign(shadow0));
-}
-#elif SHADOW_SAMPLING_TYPE == 2
-vec3 sampleShadowsPCSS(vec3 coord, float distortCoeff) {
-	const float texelSize = 1.0 / textureSize(shadowtex0, 0).x;
-	float spread = 0.15 / distortCoeff;
-
-	float ang = noise1(gl_FragCoord.st) * TAU;
-	mat2  rot = mat2(cos(ang), sin(ang), -sin(ang), cos(ang));
-
-	float depthAverage = 0.0;
-	float searchScale = 8.0 * texelSize / distortCoeff;
-	for (float i = -1.5; i <= 1.5; i++) {
-		for (float j = -1.5; j <= 1.5; j++) {
-			float depthSample = coord.z - textureLod(shadowtex1, coord.xy + (vec2(i, j) * searchScale), 3).r;
-			depthAverage += clamp(depthSample, 0.0, 32.0 / 1024.0);
-		}
-	}
-	depthAverage /= 16;
-
-	float penumbraSize = max(depthAverage * spread, texelSize.x * 2.0);
-
-	float shadow0     = 0.0;
-	float shadow1     = 0.0;
-	vec3  shadowColor = vec3(0.0);
-	for (int i = -4; i < 4; i++) {
-		for (int j = -4; j < 4; j++) {
-			vec3 sampleCoord = vec3(coord.xy + (vec2(i, j) * penumbraSize * rot / 4), coord.p);
-
-			shadow0     += textureLod(shadowtex0, sampleCoord, penumbraSize);
-			shadow1     += float(textureLod(shadowtex1, sampleCoord.xy, penumbraSize).r > coord.z);
-			shadowColor += textureLod(shadowcolor0, sampleCoord.xy, penumbraSize).rgb;
-		}
-	}
-	shadow0     /= pow(9, 2.0);
-	shadow1     /= pow(9, 2.0);
-	shadowColor /= pow(9, 2.0);
-
-	return mix(vec3(shadow0), shadowColor, shadow1 > sign(shadow0));
+	return shadow;
 }
 #endif
 
-vec3 calculateShadows(vec3 positionLocal, vec3 normal) {
+float calculateShadows(vec3 positionLocal, vec3 normal) {
 	vec3 shadowCoord = (shadowProjection * shadowModelView * vec4(positionLocal, 1.0)).xyz;
 
 	float distortCoeff = 1.0 + length(shadowCoord.xy);
 
-	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex1, 0).x) * shadowProjection[2].z;
+	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex0, 0).x) * shadowProjection[2].z;
 	zBias *= tan(acos(abs(dot(normalize(shadowLightPosition), normal))));
 	zBias *= mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
 
@@ -142,8 +96,6 @@ vec3 calculateShadows(vec3 positionLocal, vec3 normal) {
 	return sampleShadows(shadowCoord);
 	#elif SHADOW_SAMPLING_TYPE == 1
 	return sampleShadowsSoft(shadowCoord);
-	#elif SHADOW_SAMPLING_TYPE == 2
-	return sampleShadowsPCSS(shadowCoord, distortCoeff);
 	#endif
 }
 
@@ -151,7 +103,7 @@ vec3 calculateGlobalLight(worldStruct world, surfaceStruct surface) {
 	float diffuse = calculateDiffuse(world.globalLightVector, surface.normal, normalize(-surface.positionView), surface.material.roughness);
 	if (diffuse <= 0.0) return vec3(0.0);
 
-	vec3 shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
+	float shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
 
 	vec3 light = world.globalLightColor * diffuse * shadows;
 

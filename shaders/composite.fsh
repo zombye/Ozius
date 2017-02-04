@@ -28,10 +28,6 @@ const int colortex7Format = RGBA32F; // Sky
 
 const bool shadowHardwareFiltering0 = true;
 
-const bool shadowtex0Mipmap   = true;
-const bool shadowtex1Mipmap   = true;
-const bool shadowcolor0Mipmap = true;
-
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 /* DRAWBUFFERS:7 */
@@ -43,6 +39,8 @@ layout (location = 0) out vec3 sky;
 in vec2 fragCoord;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
+
+uniform float sunAngle;
 
 uniform vec3 skyColor;
 
@@ -97,5 +95,5 @@ void main() {
 	vec3 dir = unprojectSky(fragCoord);
 
 	sky  = skyAtmosphere(dir, normalize(mat3(gbufferModelViewInverse) * shadowLightPosition).xzy);
-	sky *= ILLUMINANCE_SKY;
+	sky *= mix(ILLUMINANCE_SKY * 2.5e-5, ILLUMINANCE_SKY, sunAngle < 0.5);
 }

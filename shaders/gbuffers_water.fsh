@@ -71,8 +71,6 @@ uniform sampler2D base, specular;
 uniform sampler2D normals;
 
 uniform sampler2DShadow shadowtex0;
-uniform sampler2D shadowtex1;
-uniform sampler2D shadowcolor0;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -130,7 +128,7 @@ float smoothNoise(vec2 coord) {
 	return mix(mix(ns.x, ns.y, fr.x), mix(ns.z, ns.w, fr.x), fr.y);
 }
 float calculateWaterWaves(vec2 pos) {
-	//--// 
+	//--//
 
 	const vec4 aspect = vec4( 1.42, 2.42, 0.83, 1.25);
 	const vec4 height = vec4( 0.01, 0.03, 0.06, 0.10);

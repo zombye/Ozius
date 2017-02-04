@@ -130,6 +130,6 @@ void main() {
 
 	packedData.r = packNormal(getNormal(pCoord.st));
 	packedData.g = packNormal(tbnMatrix[2]);
-	packedData.b = calculateParallaxSelfShadow(pCoord, normalize(shadowLightPosition * tbnMatrix));;
+	packedData.b = calculateParallaxSelfShadow(pCoord, normalize(shadowLightPosition * tbnMatrix));
 	packedData.a = uintBitsToFloat(packUnorm2x16(lmUV));
 }
