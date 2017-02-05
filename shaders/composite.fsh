@@ -26,7 +26,7 @@ const int colortex5Format = RGBA32F;
 const int colortex7Format = RGBA32F; // Sky
 */
 
-const bool shadowHardwareFiltering0 = true;
+const bool shadowHardwareFiltering1 = true;
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
@@ -68,7 +68,7 @@ vec3 unprojectSky(vec2 p) {
 }
 
 float miePhase(float cosTheta) {
-	const float g  = 0.9;
+	const float g  = 0.8;
 	const float gg = g * g;
 
 	float p1 = (3.0 * (1.0 - gg)) / (2.0 * (2.0 + gg));
@@ -86,7 +86,7 @@ vec3 skyAtmosphere(vec3 viewVec, vec3 sunVec) {
 
 	float mie      = 0.03 * miePhase(VoL);
 	vec3  rayleigh = pow(skyColor, vec3(GAMMA)) * rayleighPhase(VoL);
-	return (rayleigh + mie) * (pow(saturate(1.0 - VoU), 4) * 3.5 + 0.5);
+	return (rayleigh + mie) * (pow(saturate(1.0 - VoU), 4) * 6.5 + 0.5);
 }
 
 //--//

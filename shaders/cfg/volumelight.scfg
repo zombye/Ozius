@@ -1,0 +1,6 @@
+#define VL
+
+#define VL_STEPS        16    // Steps to take. [12 16 24]
+#define VL_MAX_DISTANCE 128.0 // Render distance.
+#define VL_QUALITY_MODE 0     // 0 = Constant step count. 1 = Constant step size [0 1]
+#define VL_MULT         3e4   // Only realistic if set to 1.0, but it looks better if it's set to a (much) higher value.

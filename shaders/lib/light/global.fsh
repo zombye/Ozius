@@ -43,7 +43,7 @@ float diffuseOrenNayar(vec3 light, vec3 normal, vec3 view, float roughness) {
 
 #if SHADOW_SAMPLING_TYPE == 0
 float sampleShadows(vec3 coord) {
-	float shadow = texture(shadowtex0, coord);
+	float shadow = texture(shadowtex1, coord);
 
 	return shadow * shadow;
 }
@@ -60,8 +60,8 @@ float sampleShadowsSoft(vec3 coord) {
 	);
 
 	for (int i = 0; i < offset.length(); i++) {
-		vec3 offsCoord = coord + vec3(offset[i] / textureSize(shadowtex0, 0), 0);
-		shadow += texture(shadowtex0, offsCoord);
+		vec3 offsCoord = coord + vec3(offset[i] / textureSize(shadowtex1, 0), 0);
+		shadow += texture(shadowtex1, offsCoord);
 	}
 	shadow /= offset.length(); shadow *= shadow;
 
@@ -74,7 +74,7 @@ float calculateShadows(vec3 positionLocal, vec3 normal) {
 
 	float distortCoeff = 1.0 + length(shadowCoord.xy);
 
-	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex0, 0).x) * shadowProjection[2].z;
+	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex1, 0).x) * shadowProjection[2].z;
 	zBias *= tan(acos(abs(dot(normalize(shadowLightPosition), normal))));
 	zBias *= mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
 

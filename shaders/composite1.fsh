@@ -58,6 +58,8 @@ in worldStruct world;
 
 uniform float shadowAngle;
 
+uniform vec3 skyColor;
+
 uniform vec3 shadowLightPosition;
 
 uniform mat4 gbufferProjectionInverse, gbufferModelViewInverse;
@@ -66,7 +68,7 @@ uniform mat4 shadowProjection, shadowModelView;
 uniform sampler2D colortex0, colortex1;
 uniform sampler2D depthtex1;
 
-uniform sampler2DShadow shadowtex0;
+uniform sampler2DShadow shadowtex1;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 

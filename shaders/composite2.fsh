@@ -4,6 +4,8 @@
 
 #include "/cfg/global.scfg"
 
+#include "/cfg/volumelight.scfg"
+
 #define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
 #define REFLECTION_BOUNCES 1 // [1 2]
 
@@ -43,12 +45,16 @@ in vec2 fragCoord;
 
 uniform int isEyeInWater;
 
+uniform float eyeAltitude;
+
+uniform vec3 skyColor;
+
 uniform vec3 shadowLightPosition;
 uniform vec3 upPosition;
 
 uniform mat4 gbufferProjection;
-uniform mat4 gbufferProjectionInverse;
-uniform mat4 gbufferModelViewInverse;
+uniform mat4 gbufferProjectionInverse, gbufferModelViewInverse;
+uniform mat4 shadowProjection, shadowModelView;
 
 uniform sampler2D colortex0, colortex1;
 uniform sampler2D colortex2, colortex3; // Transparent surfaces
@@ -58,9 +64,12 @@ uniform sampler2D colortex7; // Sky
 
 uniform sampler2D depthtex0, depthtex1;
 
+uniform sampler2DShadow shadowtex1;
+
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
+#include "/lib/illuminance.glsl"
 
 #include "/lib/util/packing/normal.glsl"
 #include "/lib/util/maxof.glsl"
@@ -218,11 +227,69 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 		waterShading = waterFog(waterShading, length(surface.positionView[0]));
 	}
 
-	// Account for water needing some opacity to actually render at all
-	waterShading /= 0.8;
-
 	return waterShading;
 }
+
+//--//
+
+#ifdef VL
+float miePhase(float cosTheta) {
+	const float g  = 0.8;
+	const float gg = g * g;
+
+	float p1 = (3.0 * (1.0 - gg)) / (2.0 * (2.0 + gg));
+	float p2 = ((cosTheta * cosTheta) + 1.0) / pow(1.0 + gg - 2.0 * g * cosTheta, 1.5);
+
+	return p1 * p2;
+}
+float rayleighPhase(float cosTheta) {
+	return 0.75 * (cosTheta * cosTheta + 1.0);
+}
+
+vec3 localSpaceToShadowSpace(vec3 localPos) {
+	vec3 shadowPos = (shadowProjection * shadowModelView * vec4(localPos, 1.0)).xyz;
+	return vec3(shadowPos.xy / (1.0 + length(shadowPos.xy)), shadowPos.z / 4.0);
+}
+
+vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
+	const uint  maxSteps = VL_STEPS;
+	const float maxDist  = VL_MAX_DISTANCE;
+	#if VL_QUALITY_MODE == 0
+	float stepSize = min(maxDist, -linearDepth) / maxSteps;
+	#elif VL_QUALITY_MODE == 1
+	const float stepSize = maxDist / maxSteps;
+	#endif
+
+	vec3 rlCoeff  = pow(skyColor, vec3(GAMMA)) * 5e-5;
+	vec3 mieCoeff = vec3(3e-6);
+
+
+	float VoL = dot(viewVector, normalize(shadowLightPosition));
+	vec2 phase = vec2(rayleighPhase(VoL), miePhase(VoL));
+
+	vec3 increment = viewVector * stepSize;
+
+	vec3 rlScatter  = rlCoeff  * phase.x;
+	vec3 mieScatter = mieCoeff * phase.y;
+
+	vec3 viewPos = increment * noise1(fragCoord);
+	vec3 transmittance = vec3(1.0);
+	vec3 scattered     = vec3(0.0);
+	while (viewPos.z > linearDepth + stepSize && length(viewPos) < maxDist) {
+		viewPos += increment;
+		vec3 localPos = viewSpaceToLocalSpace(viewPos);
+
+		vec2 odStep = exp(-(localPos.y + eyeAltitude) / vec2(8e3, 1.2e3)) * stepSize;
+
+		transmittance *= exp(-(rlScatter * odStep.x + mieScatter * odStep.y));
+
+		scattered += (rlScatter + mieScatter) * transmittance * texture(shadowtex1, localSpaceToShadowSpace(localPos) * 0.5 + 0.5);
+	}
+	scattered *= VL_MULT * ILLUMINANCE_SUN / float(maxSteps);
+
+	return mix(scattered, color, transmittance);
+}
+#endif
 
 //--//
 
@@ -279,6 +346,12 @@ void main() {
 	} else if (isEyeInWater == 1) {
 		composite = waterFog(composite, length(surface.positionView[0]));
 	}
+
+	#ifdef VL
+	composite = calculateVolumetricLight(composite, normalize(surface.positionView[0]), surface.depth.z);
+	#endif
+
+	if (waterMask) composite /= 0.8; // Water needs some opacity to render, this hides the effects of that.
 
 	vec4 trans = texture(colortex2, fragCoord);
 	composite = mix(composite, trans.rgb, trans.a);

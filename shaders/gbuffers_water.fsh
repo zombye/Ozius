@@ -62,6 +62,8 @@ in worldStruct world;
 
 uniform float shadowAngle;
 
+uniform vec3 skyColor;
+
 uniform vec3 shadowLightPosition;
 uniform vec3 cameraPosition;
 
@@ -70,7 +72,7 @@ uniform mat4 shadowModelView, shadowProjection;
 uniform sampler2D base, specular;
 uniform sampler2D normals;
 
-uniform sampler2DShadow shadowtex0;
+uniform sampler2DShadow shadowtex1;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -84,7 +86,7 @@ uniform sampler2DShadow shadowtex0;
 
 //--//
 
-materialStruct getMaterial(vec2 uv, out float diffAlpha) {
+materialStruct getMaterial(vec2 uv) {
 	materialStruct material;
 
 	vec3 diff = texture(base,     uv).rgb;
@@ -224,6 +226,9 @@ void main() {
 	data0.rgb = pow(data0.rgb, vec3(GAMMA));
 
 	surfaceStruct surface;
+	surface.material = getMaterial(baseUV);
+
+	surface.positionView  = positionView;
 	surface.positionLocal = positionLocal;
 
 	surface.normal     = getNormal(baseUV);
