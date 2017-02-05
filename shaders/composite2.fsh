@@ -47,6 +47,8 @@ uniform int isEyeInWater;
 
 uniform float eyeAltitude;
 
+uniform float sunAngle;
+
 uniform vec3 skyColor;
 
 uniform vec3 shadowLightPosition;
@@ -254,38 +256,30 @@ vec3 localSpaceToShadowSpace(vec3 localPos) {
 vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
 	const uint  maxSteps = VL_STEPS;
 	const float maxDist  = VL_MAX_DISTANCE;
-	#if VL_QUALITY_MODE == 0
-	float stepSize = min(maxDist, -linearDepth) / maxSteps;
-	#elif VL_QUALITY_MODE == 1
-	const float stepSize = maxDist / maxSteps;
-	#endif
+	float stepSize = min(maxDist, linearDepth / viewVector.z) / maxSteps;
 
-	vec3 rlCoeff  = pow(skyColor, vec3(GAMMA)) * 5e-5;
-	vec3 mieCoeff = vec3(3e-6);
-
+	// 0/x = rayleigh, 1/y = mie
+	mat2x3 coeffMatrix = mat2x3(pow(skyColor, vec3(GAMMA)) * 5e-5, vec3(3e-6));
 
 	float VoL = dot(viewVector, normalize(shadowLightPosition));
 	vec2 phase = vec2(rayleighPhase(VoL), miePhase(VoL));
 
 	vec3 increment = viewVector * stepSize;
 
-	vec3 rlScatter  = rlCoeff  * phase.x;
-	vec3 mieScatter = mieCoeff * phase.y;
-
-	vec3 viewPos = increment * noise1(fragCoord);
+	vec3 viewPos = -increment * noise1(fragCoord);
 	vec3 transmittance = vec3(1.0);
 	vec3 scattered     = vec3(0.0);
-	while (viewPos.z > linearDepth + stepSize && length(viewPos) < maxDist) {
+	for (uint i = 0; i < maxSteps; i++) {
 		viewPos += increment;
 		vec3 localPos = viewSpaceToLocalSpace(viewPos);
 
 		vec2 odStep = exp(-(localPos.y + eyeAltitude) / vec2(8e3, 1.2e3)) * stepSize;
 
-		transmittance *= exp(-(rlScatter * odStep.x + mieScatter * odStep.y));
+		transmittance *= exp(coeffMatrix * -odStep); // using double precition here could help, as it can round to 0 if odStep is too small
 
-		scattered += (rlScatter + mieScatter) * transmittance * texture(shadowtex1, localSpaceToShadowSpace(localPos) * 0.5 + 0.5);
+		scattered += (coeffMatrix * (odStep * phase)) * transmittance * texture(shadowtex1, localSpaceToShadowSpace(localPos) * 0.5 + 0.5);
 	}
-	scattered *= VL_MULT * ILLUMINANCE_SUN / float(maxSteps);
+	scattered *= VL_MULT * mix(0.2, ILLUMINANCE_SUN, sunAngle < 0.5);
 
 	return mix(scattered, color, transmittance);
 }
