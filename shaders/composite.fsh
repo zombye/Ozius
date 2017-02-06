@@ -84,8 +84,11 @@ vec3 skyAtmosphere(vec3 viewVec, vec3 sunVec) {
 	float VoL = dot(viewVec, sunVec);
 	float VoU = dot(viewVec, vec3(0.0, 0.0, 1.0));
 
-	float mie      = 0.03 * miePhase(VoL);
-	vec3  rayleigh = pow(skyColor, vec3(GAMMA)) * rayleighPhase(VoL);
+	vec3 skyCol = max(pow(skyColor, vec3(GAMMA)), 1e-5 * vec3(0.15, 0.5, 1.0));
+
+	float mie  = 3e-1 * miePhase(VoL);
+	      mie *= dot(skyCol, vec3(0.2126, 0.7152, 0.0722));
+	vec3  rayleigh = skyCol * rayleighPhase(VoL);
 	return (rayleigh + mie) * (pow(saturate(1.0 - VoU), 4) * 6.5 + 0.5);
 }
 
@@ -95,5 +98,5 @@ void main() {
 	vec3 dir = unprojectSky(fragCoord);
 
 	sky  = skyAtmosphere(dir, normalize(mat3(gbufferModelViewInverse) * shadowLightPosition).xzy);
-	sky *= mix(ILLUMINANCE_SKY * 2.5e-5, ILLUMINANCE_SKY, sunAngle < 0.5);
+	sky *= ILLUMINANCE_SKY;
 }

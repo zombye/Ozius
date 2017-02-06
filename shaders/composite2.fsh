@@ -254,12 +254,10 @@ vec3 localSpaceToShadowSpace(vec3 localPos) {
 }
 
 vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
-	const uint  maxSteps = VL_STEPS;
-	const float maxDist  = VL_MAX_DISTANCE;
-	float stepSize = min(maxDist, linearDepth / viewVector.z) / maxSteps;
+	float stepSize = (linearDepth / viewVector.z) / VL_STEPS;
 
 	// 0/x = rayleigh, 1/y = mie
-	mat2x3 coeffMatrix = mat2x3(pow(skyColor, vec3(GAMMA)) * 5e-5, vec3(3e-6));
+	const mat2x3 coeffMatrix = mat2x3(vec3(5.8e-6, 1.35e-5, 3.31e-5), vec3(3e-6)) * VL_MULT;
 
 	float VoL = dot(viewVector, normalize(shadowLightPosition));
 	vec2 phase = vec2(rayleighPhase(VoL), miePhase(VoL));
@@ -269,7 +267,7 @@ vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
 	vec3 viewPos = -increment * noise1(fragCoord);
 	vec3 transmittance = vec3(1.0);
 	vec3 scattered     = vec3(0.0);
-	for (uint i = 0; i < maxSteps; i++) {
+	for (uint i = 0; i < VL_STEPS; i++) {
 		viewPos += increment;
 		vec3 localPos = viewSpaceToLocalSpace(viewPos);
 
@@ -279,9 +277,9 @@ vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
 
 		scattered += (coeffMatrix * (odStep * phase)) * transmittance * texture(shadowtex1, localSpaceToShadowSpace(localPos) * 0.5 + 0.5);
 	}
-	scattered *= VL_MULT * mix(0.2, ILLUMINANCE_SUN, sunAngle < 0.5);
+	scattered *= mix(0.2, ILLUMINANCE_SUN, sunAngle < 0.5);
 
-	return mix(scattered, color, transmittance);
+	return scattered + (color * transmittance);
 }
 #endif
 
