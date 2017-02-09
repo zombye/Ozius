@@ -9,8 +9,8 @@
 //--// Structs //----------------------------------------------------------------------------------------//
 
 struct materialStruct {
-	vec3 albedo;   // RGB of base texture.
-	vec3 specular; // Currently R of specular texture.
+	vec3 diffuse;  // RGB of base texture
+	vec3 specular; // Currently R of specular texture
 
 	float roughness; // Currently B of specular texture
 };
@@ -138,8 +138,8 @@ void main() {
 
 	composite = light.global + light.sky + light.block;
 	#if REFLECTION_SAMPLES > 0
-	composite *= surface.material.albedo;
+	composite *= surface.material.diffuse;
 	#else
-	composite *= mix(surface.material.albedo, vec3(1.0), surface.material.specular);
+	composite *= mix(surface.material.diffuse, vec3(1.0), surface.material.specular);
 	#endif
 }

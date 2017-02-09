@@ -19,7 +19,4 @@ uniform sampler2D base;
 
 void main() {
 	color = texture(base, baseUV) * tint;
-	if (color.a < 0.102) discard; // ~ 26 / 255
-
-	color.rgb = mix(vec3(1.0), color.rgb, color.a);
 }

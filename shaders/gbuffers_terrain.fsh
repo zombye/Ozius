@@ -4,11 +4,13 @@
 
 #include "/cfg/global.scfg"
 
-#define PM_QUALITY 2 // 0 = Off. 1 = Low. 2 = Medium. 3 = High. [0 1 2 3]
-#define PM_DEPTH 0.25
+#define PM
+#define PM_STEPS 32   // [16 32 64]
+#define PM_DEPTH 0.10 // [0.10 0.15 0.20 0.25 0.3]
 //#define PM_DEPTH_WRITE
 
-#define PSS_QUALITY 2 // 0 = Off. 1 = Low. 2 = Medium. 3 = High. [0 1 2 3]
+#define PSS
+#define PSS_STEPS 32 // [16 32 64]
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
@@ -24,8 +26,7 @@ in vec3 positionView;
 in mat3 tbnMatrix;
 in vec4 tint;
 in vec2 baseUV, lmUV;
-
-in float isMetal;
+in vec4 metadata;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
@@ -36,32 +37,37 @@ uniform mat4 gbufferProjection;
 uniform sampler2D base, specular;
 uniform sampler2D normals;
 
+//--// Global constants & variables //-------------------------------------------------------------------//
+
+#if PM_QUALITY > 0
+float lodLevel = textureQueryLod(base, baseUV).x;
+#define texture(x, y) textureLod(x, y, lodLevel)
+#endif
+
 //--// Functions //--------------------------------------------------------------------------------------//
 
+#include "/lib/preprocess.glsl"
+
+//--//
+
+#ifdef PM_DEPTH_WRITE
 float delinearizeDepth(float depth) {
 	return ((depth * gbufferProjection[2].z + gbufferProjection[3].z) / (depth * gbufferProjection[2].w + gbufferProjection[3].w)) * 0.5 + 0.5;
 }
+#endif
 
 vec3 calculateParallaxCoord(vec2 coord, vec3 dir) {
-	#if PM_QUALITY > 0
+	#ifdef PM
 	vec2 atlasTiles = textureSize(base, 0) / TEXTURE_RESOLUTION;
 	vec4 tcoord = vec4(fract(coord * atlasTiles), floor(coord * atlasTiles));
 
-	#if PM_QUALITY == 1
-	const int steps = 16;
-	#elif PM_QUALITY == 2
-	const int steps = 32;
-	#elif PM_QUALITY == 3
-	const int steps = 64;
-	#endif
-
-	vec3 increment = 2.0 * vec3(PM_DEPTH, PM_DEPTH, 1.0) * (dir / abs(dir.z)) / steps;
-	float foundHeight = textureLod(normals, coord, 0).a;
+	vec3 increment = (2.0 / PM_STEPS) * vec3(PM_DEPTH, PM_DEPTH, 1.0) * (dir / -dir.z);
+	float foundHeight = texture(normals, coord).a;
 	vec3 offset = vec3(0.0, 0.0, 1.0);
 
-	for (int i = 0; i < steps && foundHeight < offset.z; i++) {
-		offset += mix(vec3(0.0), increment, pow(offset.z - foundHeight, 0.8));
-		foundHeight = textureLod(normals, (fract(tcoord.xy + offset.xy) + tcoord.zw) / atlasTiles, 0).a;
+	for (int i = 0; i < PM_STEPS && foundHeight < offset.z; i++) {
+		offset += increment * pow(offset.z - foundHeight, 0.8);
+		foundHeight = texture(normals, (fract(tcoord.xy + offset.xy) + tcoord.zw) / atlasTiles).a;
 	}
 
 	#ifdef PM_DEPTH_WRITE
@@ -75,27 +81,20 @@ vec3 calculateParallaxCoord(vec2 coord, vec3 dir) {
 }
 
 float calculateParallaxSelfShadow(vec3 coord, vec3 dir) {
-	#if PSS_QUALITY > 0
+	#ifdef PSS
 	if (dot(tbnMatrix[2], shadowLightPosition) <= 0.0) return 0.0;
 
-	#if PSS_QUALITY == 1
-	const int steps = 16;
-	#elif PSS_QUALITY == 2
-	const int steps = 32;
-	#elif PSS_QUALITY == 3
-	const int steps = 64;
-	#endif
 	const vec2 atlasTiles = textureSize(base, 0) / TEXTURE_RESOLUTION;
 
 	vec4 tcoord = vec4(fract(coord.xy * atlasTiles), floor(coord.xy * atlasTiles));
 
-	vec3 increment = vec3(PM_DEPTH, PM_DEPTH, 1.0) * (dir / dir.z) / steps;
+	vec3 increment = vec3(PM_DEPTH, PM_DEPTH, 1.0) * (dir / dir.z) / PSS_STEPS;
 	vec3 offset = vec3(0.0, 0.0, coord.z);
 
-	for (int i = 0; i < steps && offset.z < 1.0; i++) {
+	for (int i = 0; i < PSS_STEPS && offset.z < 1.0; i++) {
 		offset += increment;
 
-		float foundHeight = textureLod(normals, (fract(tcoord.xy + offset.xy) + tcoord.zw) / atlasTiles, 0).a;
+		float foundHeight = texture(normals, (fract(tcoord.xy + offset.xy) + tcoord.zw) / atlasTiles).a;
 		if (offset.z < foundHeight) return 0.0;
 	}
 	#endif
@@ -116,10 +115,9 @@ void main() {
 
 	vec4 baseTex = texture(base, pCoord.st) * tint;
 	if (baseTex.a < 0.102) discard; // ~ 26 / 255
-	vec4 specTex = texture(specular, pCoord.st);
 
-	vec4 diff = vec4(mix(baseTex.rgb, vec3(0.0), isMetal), 1.0);
-	vec4 spec = vec4(mix(specTex.rrr, baseTex.rgb, isMetal), specTex.b);
+	vec4 diff = vec4(baseTex.rgb, metadata.x / 255.0);
+	vec4 spec = texture(specular, pCoord.st);
 
 	//--//
 

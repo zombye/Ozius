@@ -63,7 +63,7 @@ void main() {
 	tbnMatrix = calculateTBN();
 	tint      = vertexColor;
 	baseUV    = vertexUV;
-	lmUV      = vertexLightmap / 256.0;
+	lmUV      = vertexLightmap / 240.0;
 	blockID   = vertexMetadata.x;
 
 	//--// Fill world struct

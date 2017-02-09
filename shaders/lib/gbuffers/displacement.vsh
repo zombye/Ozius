@@ -1,10 +1,15 @@
-vec2 calculateWind(vec3 position) {
-	vec2 wind = vec2(0.0);
-	vec2 pos = position.xz / textureSize(noisetex, 0);
+void calculateWavingPlants(inout vec3 position, bool doublePlant) {
+	bool topVert = vertexUV.y < quadMidUV.y;
+	bool topHalf = vertexMetadata.z > 8 && doublePlant;
+
+	if (!topHalf && !topVert) return;
+
+	vec2 disp = vec2(0.0);
+	vec2 pos = (position.xz + globalTime * 1.28) / textureSize(noisetex, 0);
 
 	// Main wind
-	wind = textureSmooth(noisetex, (pos / 16.0) + (globalTime * 0.01)).rg * 3.0 - 1.5;
-	wind *= rainStrength + 1.0;
+	disp = textureSmooth(noisetex, (pos / 16.0) + (globalTime * 0.01)).rg * 3.0 - 1.5;
+	disp *= rainStrength + 1.0;
 
 	// Small-scale turbulence
 	const uint oct = 4;
@@ -13,54 +18,68 @@ vec2 calculateWind(vec3 position) {
 	float freq = 1.0;
 	float lacu = 1.5;
 
-	pos += globalTime * 0.02;
 	for (uint i = 0; i < oct; i++) {
-		wind += ampl * (textureSmooth(noisetex, pos * freq).rg - 0.5);
+		disp += ampl * (textureSmooth(noisetex, pos * freq).rg - 0.5);
 		ampl *= gain;
 		freq *= lacu;
 		pos  *= mat2(cos(1), sin(1), -sin(1), cos(1));
 	}
 
 	// Scale down in caves and similar
-	wind *= vertexLightmap.y / 256.0;
+	disp *= vertexLightmap.y / 240.0;
 
-	return wind;
-}
+	// Displace within a circle, not a square.
+	disp *= normalize(abs(disp));
 
-void calculateWavingPlants(inout vec3 position, vec2 wind) {
-	bool topVert = vertexUV.y < quadMidUV.y;
-	if (!topVert) return;
-
-	vec2 disp = wind * 0.1;
+	disp *= 0.1;
+	if (doublePlant) disp *= mix(0.5, 2.0, topHalf && topVert);
 
 	position.xz += sin(disp);
-	position.y  += cos(disp.x + disp.y) - 1.0;
-
-	return;
+	position.y  += cos((disp.x + disp.y) * mix(1.0, 0.5, topHalf && topVert)) - 1.0;
 }
-void calculateWavingDoublePlants(inout vec3 position, vec2 wind) {
-	bool topVert = vertexUV.y < quadMidUV.y;
-	bool topHalf = vertexMetadata.z > 8;
 
-	if (!topHalf && !topVert) return;
+vec3 get3DNoiseTexture(vec3 coord) {
+	coord.xy /= textureSize(noisetex, 0);
 
-	vec2 disp = wind;
-	disp *= mix(0.05, 0.2, float(topHalf && topVert));
+	coord.x += floor(coord.z) * 0.05 * PI;
 
-	position.xz += sin(disp);
-	position.y += cos((disp.x + disp.y) * mix(1.0, 0.5, float(topHalf && topVert))) - 1.0;
+	vec3 noisel = textureSmooth(noisetex, coord.xy).rgb;
+	vec3 noiseh = textureSmooth(noisetex, (coord.xy + vec2(0.05, 0.0) * PI)).rgb;
 
-	return;
+	float mixf = smoothstep(floor(coord.z), ceil(coord.z), coord.z);
+
+	return mix(noisel, noiseh, mixf);
 }
-void calculateWavingLeaves(inout vec3 position, vec2 wind) {
-	// TODO
-	return;
+
+void calculateWavingLeaves(inout vec3 position) {
+	vec3 disp = vec3(0.0);
+	vec3 pos = position.xzy;
+	pos += globalTime * vec3(0.9, 0.9, 0.3);
+
+	const uint oct = 3;
+	float gain = 0.4 + rainStrength * 0.1;
+	const float lacu = 1.6;
+	float ampl = 1.0 + rainStrength * 0.2;
+	float freq = 0.7;
+
+	for (uint i = 0; i < oct; i++) {
+		disp += ampl * (get3DNoiseTexture(pos * freq) - 0.5);
+		ampl *= gain;
+		freq *= lacu;
+		pos.xy *= mat2(cos(1), sin(1), -sin(1), cos(1));
+	}
+
+	// Scale down in caves and similar
+	disp *= vertexLightmap.y / 240.0;
+
+	// Displace within a sphere, not a cube.
+	disp *= normalize(abs(disp));
+
+	position += disp.xzy * 0.1;
 }
 
 void calculateDisplacement(inout vec3 position) {
 	if (vertexLightmap.y == 0.0) return;
-
-	vec2 wind = calculateWind(position);
 
 	switch (int(vertexMetadata.x)) {
 		case 31:  // Tall grass and fern
@@ -70,12 +89,12 @@ void calculateDisplacement(inout vec3 position) {
 		case 141: // Carrots
 		case 142: // Potatoes
 		case 207: // Beetroots
-			calculateWavingPlants(position, wind); break;
+			calculateWavingPlants(position, false); break;
 		case 175: // Double plants
-			calculateWavingDoublePlants(position, wind); break;
-		case 18:  // Leaves 1
-		case 161: // Leaves 2
-			calculateWavingLeaves(position, wind); break;
+			calculateWavingPlants(position, true); break;
+		case 18:  // Leaves (Oak, Spruce, Birch, Jungle)
+		case 161: // Leaves 2 (Acacia, Dark Oak)
+			calculateWavingLeaves(position); break;
 		default: break;
 	}
 }

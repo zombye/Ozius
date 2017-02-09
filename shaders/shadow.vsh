@@ -48,19 +48,18 @@ void main() {
 		gl_Position = vec4(1.0);
 		return;
 	}
+
 	gl_Position = initPosition();
 	gl_Position = shadowModelViewInverse * gl_Position;
 
-	gl_Position = gl_Position + vec4(cameraPosition, 0.0);
+	gl_Position.xyz += cameraPosition;
 	calculateDisplacement(gl_Position.xyz);
-	gl_Position = gl_Position - vec4(cameraPosition, 0.0);
+	gl_Position.xyz -= cameraPosition;
 
-	gl_Position = shadowModelView  * gl_Position;
-	gl_Position = shadowProjection * gl_Position;
+	gl_Position = shadowProjection * shadowModelView  * gl_Position;
 
-	gl_Position.xy /= 1.0 + length(gl_Position.xy);
-	gl_Position.z  *= 0.25;
+	gl_Position.xyz /= vec3(vec2(1.0 + length(gl_Position.xy)), 4.0);
 
-	tint    = vertexColor;
-	baseUV  = vertexUV;
+	tint   = vertexColor;
+	baseUV = vertexUV;
 }

@@ -141,33 +141,26 @@ float calculateWaterWaves(vec2 pos) {
 	const vec4 sharpn = vec4( 0.00, 0.20, 0.00, 0.60);
 
 	const vec4 k = TAU / length;
-	const vec4 omega = sqrt(32.0 / k);
+	const vec4 omega = sqrt(32.0 / k) / TAU;
 
 	//--//
 
-	const mat2 r0 = mat2(cos(rotate.x), sin(rotate.x), -sin(rotate.x), cos(rotate.x));
-	const mat2 r1 = mat2(cos(rotate.y), sin(rotate.y), -sin(rotate.y), cos(rotate.y));
-	const mat2 r2 = mat2(cos(rotate.z), sin(rotate.z), -sin(rotate.z), cos(rotate.z));
-	const mat2 r3 = mat2(cos(rotate.w), sin(rotate.w), -sin(rotate.w), cos(rotate.w));
+	const mat2 r0 = mat2(cos(rotate.x), sin(rotate.x) / aspect.x, -sin(rotate.x), cos(rotate.x) / aspect.x) * k.x / TAU;
+	const mat2 r1 = mat2(cos(rotate.y), sin(rotate.y) / aspect.y, -sin(rotate.y), cos(rotate.y) / aspect.y) * k.y / TAU;
+	const mat2 r2 = mat2(cos(rotate.z), sin(rotate.z) / aspect.z, -sin(rotate.z), cos(rotate.z) / aspect.z) * k.z / TAU;
+	const mat2 r3 = mat2(cos(rotate.w), sin(rotate.w) / aspect.w, -sin(rotate.w), cos(rotate.w) / aspect.w) * k.w / TAU;
 
-	vec2 p0 = r0 * pos / vec2(1.0, aspect.x);
-	vec2 p1 = r1 * pos / vec2(1.0, aspect.y);
-	vec2 p2 = r2 * pos / vec2(1.0, aspect.z);
-	vec2 p3 = r3 * pos / vec2(1.0, aspect.w);
-
-	vec2 x0 = (k.x * p0) - vec2(omega.x * globalTime, 0.0); x0 += x0.yx * vec2(toxamt.x, toyamt.x);
-	vec2 x1 = (k.y * p1) - vec2(omega.y * globalTime, 0.0); x1 += x1.yx * vec2(toxamt.y, toyamt.y);
-	vec2 x2 = (k.z * p2) - vec2(omega.z * globalTime, 0.0); x2 += x2.yx * vec2(toxamt.z, toyamt.z);
-	vec2 x3 = (k.w * p3) - vec2(omega.w * globalTime, 0.0); x3 += x3.yx * vec2(toxamt.w, toyamt.w);
-
-	float scaler = 1.0 / TAU;
+	vec2 p0 = (r0 * pos) - vec2(omega.x * globalTime, 0.0); p0 += p0.yx * vec2(toxamt.x, toyamt.x);
+	vec2 p1 = (r1 * pos) - vec2(omega.y * globalTime, 0.0); p1 += p1.yx * vec2(toxamt.y, toyamt.y);
+	vec2 p2 = (r2 * pos) - vec2(omega.z * globalTime, 0.0); p2 += p2.yx * vec2(toxamt.z, toyamt.z);
+	vec2 p3 = (r3 * pos) - vec2(omega.w * globalTime, 0.0); p3 += p3.yx * vec2(toxamt.w, toyamt.w);
 
 	float wave = 0.0;
 
-	wave -= height.x * sharpenWave(smoothNoise(x0 * scaler).r, sharpn.x);
-	wave -= height.y * sharpenWave(smoothNoise(x1 * scaler).r, sharpn.y);
-	wave -= height.z * sharpenWave(smoothNoise(x2 * scaler).r, sharpn.z);
-	wave -= height.w * sharpenWave(smoothNoise(x3 * scaler).r, sharpn.w);
+	wave -= height.x * sharpenWave(smoothNoise(p0), sharpn.x);
+	wave -= height.y * sharpenWave(smoothNoise(p1), sharpn.y);
+	wave -= height.z * sharpenWave(smoothNoise(p2), sharpn.z);
+	wave -= height.w * sharpenWave(smoothNoise(p3), sharpn.w);
 
 	return wave;
 }
@@ -211,7 +204,7 @@ void main() {
 		vec3 viewDir = normalize(positionView) * tbnMatrix;
 		data0 = vec4(0.0, 0.0, 0.0, 0.2);
 		data1.r = packNormal(calculateWaterNormal(positionLocal + cameraPosition, viewDir));
-		data1.g = 0.0;
+		data1.g = gl_FragCoord.z;
 		data1.b = lmUV.y;
 		data1.a = 1.0;
 

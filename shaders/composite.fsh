@@ -71,8 +71,8 @@ float miePhase(float cosTheta) {
 	const float g  = 0.8;
 	const float gg = g * g;
 
-	float p1 = (3.0 * (1.0 - gg)) / (2.0 * (2.0 + gg));
-	float p2 = ((cosTheta * cosTheta) + 1.0) / pow(1.0 + gg - 2.0 * g * cosTheta, 1.5);
+	const float p1 = (3.0 * (1.0 - gg)) / (2.0 * (2.0 + gg));
+	float p2 = (cosTheta * cosTheta + 1.0) / pow(1.0 + gg - 2.0 * g * cosTheta, 1.5);
 
 	return p1 * p2;
 }

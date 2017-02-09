@@ -12,8 +12,8 @@
 //--// Structs //----------------------------------------------------------------------------------------//
 
 struct materialStruct {
-	vec3 albedo;   // RGB of base texture.
-	vec3 specular; // Currently R of specular texture.
+	vec3 diffuse;  // RGB of base texture
+	vec3 specular; // Currently R of specular texture
 
 	float roughness; // Currently B of specular texture
 };
@@ -24,11 +24,16 @@ struct surfaceStruct {
 	vec3 normal;
 	vec3 normalGeom;
 
-	vec4 depth; // x = depth0, y = depth1 (depth0 without transparent objects). zw = linearized xy
+	vec2 depth; // x = exponential, y = linear
 
-	mat2x3 positionScreen; // Position in screen-space
-	mat2x3 positionView;   // Position in view-space
-	mat2x3 positionLocal;  // Position in local-space
+	vec3 positionScreen; // Position in screen-space
+	vec3 positionView;   // Position in view-space
+	vec3 positionLocal;  // Position in local-space
+};
+
+struct worldStruct {
+	vec3 globalLightVector;
+	vec3 globalLightColor;
 };
 
 //--// Outputs //----------------------------------------------------------------------------------------//
@@ -41,6 +46,8 @@ layout (location = 0) out vec3 composite;
 
 in vec2 fragCoord;
 
+in worldStruct world;
+
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
 uniform int isEyeInWater;
@@ -52,6 +59,7 @@ uniform float sunAngle;
 uniform vec3 skyColor;
 
 uniform vec3 shadowLightPosition;
+uniform vec3 sunPosition;
 uniform vec3 upPosition;
 
 uniform mat4 gbufferProjection;
@@ -59,7 +67,8 @@ uniform mat4 gbufferProjectionInverse, gbufferModelViewInverse;
 uniform mat4 shadowProjection, shadowModelView;
 
 uniform sampler2D colortex0, colortex1;
-uniform sampler2D colortex2, colortex3; // Transparent surfaces
+uniform sampler2D colortex2; // Transparent surfaces
+uniform sampler2D colortex3; // Water
 
 uniform sampler2D colortex5; // Previous pass
 uniform sampler2D colortex7; // Sky
@@ -101,10 +110,20 @@ vec3 viewSpaceToScreenSpace(vec3 viewSpace) {
 
 //--//
 
+vec3 skySun(vec3 viewVec, vec3 sunVec) {
+	const float sunRadiusCosine = cos(radians(0.5));
+	const float sunLuminance = 1.6e9; // Approx. luminance of the sun at noon.
+	return float(dot(viewVec, sunVec) > sunRadiusCosine) * sunLuminance * vec3(1.0, 0.96, 0.95);
+}
+
 vec3 getSky(vec3 dir) {
 	vec2 p = dir.xy * inversesqrt(dir.z * 8.0 + 8.0) * 2.0;
 	p /= maxof(abs(normalize(p)));
-	return texture(colortex7, p * 0.5 + 0.5).rgb;
+
+	vec3 sky = texture(colortex7, p * 0.5 + 0.5).rgb;
+	sky += skySun(dir, (mat3(gbufferModelViewInverse) * normalize(sunPosition)).xzy);
+
+	return sky;
 }
 
 //--//
@@ -131,14 +150,14 @@ vec3 calculateReflection(surfaceStruct surface) {
 	const uint samples = REFLECTION_SAMPLES;
 	const uint bounces = REFLECTION_BOUNCES;
 	for (uint i = 0; i < samples; i++) {
-		vec3 rayDir = normalize(surface.positionView[1]);
+		vec3 rayDir = normalize(surface.positionView);
 
 		materialStruct hitMaterial = surface.material;
 		vec3 hitNormal = is(surface.normal, normalize(noise3(fragCoord + i) * 2.0 - 1.0), hitMaterial.roughness);
 
 		vec3 reflColor = vec3(1.0);
-		vec3 hitCoord  = surface.positionScreen[1];
-		vec3 hitPos    = surface.positionView[1];
+		vec3 hitCoord  = surface.positionScreen;
+		vec3 hitPos    = surface.positionView;
 
 		for (uint j = 0; j < bounces; j++) {
 			reflColor *= f_fresnel(max(dot(hitNormal, -rayDir), 0.0), hitMaterial.specular);
@@ -176,7 +195,10 @@ vec3 waterFog(vec3 col, float dist) {
 vec3 calculateWaterShading(surfaceStruct surface) {
 	vec3 tex3Raw = textureRaw(colortex3, fragCoord).rgb;
 
-	vec3 viewDir = normalize(surface.positionView[0]);
+	vec3 screenPos = vec3(fragCoord, tex3Raw.g);
+	vec3 viewPos   = screenSpaceToViewSpace(screenPos);
+
+	vec3 viewDir = normalize(viewPos);
 
 	vec3  normal = unpackNormal(tex3Raw.r);
 	float skyVis = tex3Raw.b;
@@ -189,14 +211,14 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 
 		vec3 hitCoord;
 		vec3 hitPos;
-		if (raytraceIntersection(surface.positionView[0], rayDir, hitCoord, hitPos)) {
+		if (raytraceIntersection(viewPos, rayDir, hitCoord, hitPos)) {
 			reflection = texture(colortex5, hitCoord.xy).rgb;
 		} else if (skyVis > 0 && isEyeInWater == 0) {
 			reflection = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
 		}
 
 		if (isEyeInWater == 1) {
-			reflection = waterFog(reflection, distance(surface.positionView[0], hitPos));
+			reflection = waterFog(reflection, distance(viewPos, hitPos));
 
 			// Needed because hitPos sometimes gets bad values.
 			if (isnan(reflection.r)) reflection = vec3(0.0);
@@ -207,26 +229,28 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 	vec3 refraction; {
 		vec3 rayDir = refract(viewDir, normal, 0.75);
 
-		float refractAmount = saturate(distance(surface.positionView[0], surface.positionView[1]));
+		float refractAmount = saturate(distance(viewPos, surface.positionView));
 
-		vec3 hitPos   = rayDir * refractAmount + surface.positionView[1];
+		vec3 hitPos   = rayDir * refractAmount + viewPos;
 		vec3 hitCoord = viewSpaceToScreenSpace(hitPos);
+		hitCoord.z = texture(depthtex1, hitCoord.xy).r;
+		hitPos.z = linearizeDepth(hitCoord.z);
 
-		if (texture(depthtex1, hitCoord.xy) == 1.0) {
+		if (hitCoord.z == 1.0) {
 			refraction = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy);
 		} else {
 			refraction = texture(colortex5, hitCoord.xy).rgb;
 		}
 
 		if (isEyeInWater == 0) {
-			refraction = waterFog(refraction, distance(surface.positionView[0], hitPos) - refractAmount);
+			refraction = waterFog(refraction, distance(viewPos, hitPos));
 		}
 	}
 
 	vec3 waterShading = mix(refraction, reflection, f);
 
 	if (isEyeInWater == 1) {
-		waterShading = waterFog(waterShading, length(surface.positionView[0]));
+		waterShading = waterFog(waterShading, length(viewPos));
 	}
 
 	return waterShading;
@@ -239,8 +263,8 @@ float miePhase(float cosTheta) {
 	const float g  = 0.8;
 	const float gg = g * g;
 
-	float p1 = (3.0 * (1.0 - gg)) / (2.0 * (2.0 + gg));
-	float p2 = ((cosTheta * cosTheta) + 1.0) / pow(1.0 + gg - 2.0 * g * cosTheta, 1.5);
+	const float p1 = (3.0 * (1.0 - gg)) / (2.0 * (2.0 + gg));
+	float p2 = (cosTheta * cosTheta + 1.0) / pow(1.0 + gg - 2.0 * g * cosTheta, 1.5);
 
 	return p1 * p2;
 }
@@ -256,30 +280,28 @@ vec3 localSpaceToShadowSpace(vec3 localPos) {
 vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
 	float stepSize = (linearDepth / viewVector.z) / VL_STEPS;
 
-	// 0/x = rayleigh, 1/y = mie
-	const mat2x3 coeffMatrix = mat2x3(vec3(5.8e-6, 1.35e-5, 3.31e-5), vec3(3e-6)) * VL_MULT;
+	mat2x3 coeffMatrix = mat2x3(vec3(5.8e-6, 1.35e-5, 3.31e-5), vec3(3e-6)) * VL_MULT;
 
-	float VoL = dot(viewVector, normalize(shadowLightPosition));
-	vec2 phase = vec2(rayleighPhase(VoL), miePhase(VoL));
+	float VoL = dot(viewVector, world.globalLightVector);
+	coeffMatrix[0] *= rayleighPhase(VoL);
+	coeffMatrix[1] *= miePhase(VoL);
 
-	vec3 increment = viewVector * stepSize;
+	vec3 increment = mat3(gbufferModelViewInverse) * viewVector * stepSize;
+	vec3 localPos = -increment * noise1(fragCoord) + gbufferModelViewInverse[3].xyz;
 
-	vec3 viewPos = -increment * noise1(fragCoord);
 	vec3 transmittance = vec3(1.0);
 	vec3 scattered     = vec3(0.0);
 	for (uint i = 0; i < VL_STEPS; i++) {
-		viewPos += increment;
-		vec3 localPos = viewSpaceToLocalSpace(viewPos);
+		localPos += increment;
 
 		vec2 odStep = exp(-(localPos.y + eyeAltitude) / vec2(8e3, 1.2e3)) * stepSize;
+		transmittance *= exp(coeffMatrix * -odStep);
 
-		transmittance *= exp(coeffMatrix * -odStep); // using double precition here could help, as it can round to 0 if odStep is too small
-
-		scattered += (coeffMatrix * (odStep * phase)) * transmittance * texture(shadowtex1, localSpaceToShadowSpace(localPos) * 0.5 + 0.5);
+		scattered += (coeffMatrix * odStep) * transmittance * texture(shadowtex1, localSpaceToShadowSpace(localPos) * 0.5 + 0.5);
 	}
-	scattered *= mix(0.2, ILLUMINANCE_SUN, sunAngle < 0.5);
+	scattered *= world.globalLightColor;
 
-	return scattered + (color * transmittance);
+	return color * transmittance + scattered;
 }
 #endif
 
@@ -288,24 +310,20 @@ vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
 void main() {
 	surfaceStruct surface;
 
-	surface.depth.x = texture(depthtex0, fragCoord).r;
-	surface.depth.y = texture(depthtex1, fragCoord).r;
+	surface.depth.x = texture(depthtex1, fragCoord).r;
 
-	surface.positionScreen[0] = vec3(fragCoord, surface.depth.x);
-	surface.positionScreen[1] = vec3(fragCoord, surface.depth.y);
-	surface.positionView[0]   = screenSpaceToViewSpace(surface.positionScreen[0]);
-	surface.positionView[1]   = screenSpaceToViewSpace(surface.positionScreen[1]);
-	surface.positionLocal[0]  = viewSpaceToLocalSpace(surface.positionView[0]);
-	surface.positionLocal[1]  = viewSpaceToLocalSpace(surface.positionView[1]);
+	surface.positionScreen = vec3(fragCoord, surface.depth.x);
+	surface.positionView   = screenSpaceToViewSpace(surface.positionScreen);
+	surface.positionLocal  = viewSpaceToLocalSpace(surface.positionView);
 
-	if (surface.depth.y == 1.0) {
+	if (surface.depth.x == 1.0) {
 		if (texture(colortex3, fragCoord).a > 0.0) {
 			composite = calculateWaterShading(surface);
 		} else {
-			composite = getSky(normalize(surface.positionLocal[0].xzy));
+			composite = getSky(normalize(surface.positionLocal).xzy);
 
 			if (isEyeInWater == 1) {
-				composite = waterFog(composite, length(surface.positionView[0]));
+				composite = waterFog(composite, length(surface.positionView));
 			}
 		}
 
@@ -314,8 +332,7 @@ void main() {
 		return;
 	}
 
-	surface.depth.z = linearizeDepth(surface.depth.x);
-	surface.depth.w = linearizeDepth(surface.depth.y);
+	surface.depth.y = surface.positionView.z;
 
 	surface.material = getMaterial(fragCoord);
 
@@ -328,19 +345,19 @@ void main() {
 
 	#if REFLECTION_SAMPLES > 0
 	if (any(greaterThan(surface.material.specular, vec3(0.0))) && !waterMask) {
-		composite *= saturate(1.0 - f_fresnel(max(dot(surface.normal, -normalize(surface.positionView[0])), 0.0), surface.material.specular));
-		composite += calculateReflection(surface);
+		composite *= saturate(1.0 - f_fresnel(max(dot(surface.normal, -normalize(surface.positionView)), 0.0), surface.material.specular)*surface.material.roughness);
+		composite += calculateReflection(surface) * (1.0 - surface.material.roughness);
 	}
 	#endif
 
 	if (waterMask) {
 		composite = calculateWaterShading(surface);
 	} else if (isEyeInWater == 1) {
-		composite = waterFog(composite, length(surface.positionView[0]));
+		composite = waterFog(composite, length(surface.positionView));
 	}
 
 	#ifdef VL
-	composite = calculateVolumetricLight(composite, normalize(surface.positionView[0]), surface.depth.z);
+	composite = calculateVolumetricLight(composite, normalize(surface.positionView), surface.depth.y);
 	#endif
 
 	if (waterMask) composite /= 0.8; // Water needs some opacity to render, this hides the effects of that.
