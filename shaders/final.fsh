@@ -29,6 +29,10 @@ uniform sampler2D colortex5;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
+#include "/lib/util/textureBicubic.glsl"
+
+//--//
+
 #ifdef BLOOM
 void applyBloom(inout vec3 color) {
 	const float[7] weight = float[7](
@@ -45,13 +49,13 @@ void applyBloom(inout vec3 color) {
 	vec2 px = 1.0 / vec2(viewWidth, viewHeight);
 
 	vec3
-	bloom  = texture(colortex4, (fragCoord / exp2(1)) + vec2(0.00000           , 0.00000           )).rgb * weight[0];
-	bloom += texture(colortex4, (fragCoord / exp2(2)) + vec2(0.00000           , 0.50000 + px.y * 1)).rgb * weight[1];
-	bloom += texture(colortex4, (fragCoord / exp2(3)) + vec2(0.25000 + px.x * 1, 0.50000 + px.y * 1)).rgb * weight[2];
-	bloom += texture(colortex4, (fragCoord / exp2(4)) + vec2(0.25000 + px.x * 1, 0.62500 + px.y * 2)).rgb * weight[3];
-	bloom += texture(colortex4, (fragCoord / exp2(5)) + vec2(0.31250 + px.x * 2, 0.62500 + px.y * 2)).rgb * weight[4];
-	bloom += texture(colortex4, (fragCoord / exp2(6)) + vec2(0.31250 + px.x * 2, 0.65625 + px.y * 3)).rgb * weight[5];
-	bloom += texture(colortex4, (fragCoord / exp2(7)) + vec2(0.46875 + px.x * 3, 0.65625 + px.y * 3)).rgb * weight[6];
+	bloom  = textureBicubic(colortex4, (fragCoord / exp2(1)) + vec2(0.00000           , 0.00000           )).rgb * weight[0];
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(2)) + vec2(0.00000           , 0.50000 + px.y * 2)).rgb * weight[1];
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(3)) + vec2(0.25000 + px.x * 2, 0.50000 + px.y * 2)).rgb * weight[2];
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(4)) + vec2(0.25000 + px.x * 2, 0.62500 + px.y * 4)).rgb * weight[3];
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(5)) + vec2(0.31250 + px.x * 4, 0.62500 + px.y * 4)).rgb * weight[4];
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(6)) + vec2(0.31250 + px.x * 4, 0.65625 + px.y * 6)).rgb * weight[5];
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(7)) + vec2(0.46875 + px.x * 6, 0.65625 + px.y * 6)).rgb * weight[6];
 	bloom /= weights;
 
 	color = mix(color, bloom, BLOOM_AMOUNT * 0.5);

@@ -65,12 +65,12 @@ vec3 calculateBloomTiles() {
 
 	vec3
 	bloom  = calculateBloomTile((fragCoord - vec2(0.00000           , 0.00000           )) * exp2(1), 1);
-	bloom += calculateBloomTile((fragCoord - vec2(0.00000           , 0.50000 + px.y * 1)) * exp2(2), 2);
-	bloom += calculateBloomTile((fragCoord - vec2(0.25000 + px.x * 1, 0.50000 + px.y * 1)) * exp2(3), 3);
-	bloom += calculateBloomTile((fragCoord - vec2(0.25000 + px.x * 1, 0.62500 + px.y * 2)) * exp2(4), 4);
-	bloom += calculateBloomTile((fragCoord - vec2(0.31250 + px.x * 2, 0.62500 + px.y * 2)) * exp2(5), 5);
-	bloom += calculateBloomTile((fragCoord - vec2(0.31250 + px.x * 2, 0.65625 + px.y * 3)) * exp2(6), 6);
-	bloom += calculateBloomTile((fragCoord - vec2(0.46875 + px.x * 3, 0.65625 + px.y * 3)) * exp2(7), 7);
+	bloom += calculateBloomTile((fragCoord - vec2(0.00000           , 0.50000 + px.y * 2)) * exp2(2), 2);
+	bloom += calculateBloomTile((fragCoord - vec2(0.25000 + px.x * 2, 0.50000 + px.y * 2)) * exp2(3), 3);
+	bloom += calculateBloomTile((fragCoord - vec2(0.25000 + px.x * 2, 0.62500 + px.y * 4)) * exp2(4), 4);
+	bloom += calculateBloomTile((fragCoord - vec2(0.31250 + px.x * 4, 0.62500 + px.y * 4)) * exp2(5), 5);
+	bloom += calculateBloomTile((fragCoord - vec2(0.31250 + px.x * 4, 0.65625 + px.y * 6)) * exp2(6), 6);
+	bloom += calculateBloomTile((fragCoord - vec2(0.46875 + px.x * 6, 0.65625 + px.y * 6)) * exp2(7), 7);
 
 	return bloom;
 }
