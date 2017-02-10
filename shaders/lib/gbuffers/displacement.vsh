@@ -8,12 +8,12 @@ void calculateWavingPlants(inout vec3 position, bool doublePlant) {
 	vec2 pos = (position.xz + globalTime * 1.28) / textureSize(noisetex, 0);
 
 	// Main wind
-	disp = textureSmooth(noisetex, (pos / 16.0) + (globalTime * 0.01)).rg * 3.0 - 1.5;
-	disp *= rainStrength + 1.0;
+	disp = textureSmooth(noisetex, (pos / 16.0) + (globalTime * 0.01)).rg * 0.3 - 0.15;
+	disp *= 0.6 * rainStrength + 1.0;
 
 	// Small-scale turbulence
 	const uint oct = 4;
-	float ampl = 1.0 + 2.0 * rainStrength;
+	float ampl = 0.1 + 0.15 * rainStrength;
 	float gain = 0.5 + 0.2 * rainStrength;
 	float freq = 1.0;
 	float lacu = 1.5;
@@ -31,7 +31,6 @@ void calculateWavingPlants(inout vec3 position, bool doublePlant) {
 	// Displace within a circle, not a square.
 	disp *= normalize(abs(disp));
 
-	disp *= 0.1;
 	if (doublePlant) disp *= mix(0.5, 2.0, topHalf && topVert);
 
 	position.xz += sin(disp);
@@ -59,7 +58,7 @@ void calculateWavingLeaves(inout vec3 position) {
 	const uint oct = 3;
 	float gain = 0.4 + rainStrength * 0.1;
 	const float lacu = 1.6;
-	float ampl = 1.0 + rainStrength * 0.2;
+	float ampl = 0.1 + rainStrength * 0.02;
 	float freq = 0.7;
 
 	for (uint i = 0; i < oct; i++) {
@@ -75,7 +74,7 @@ void calculateWavingLeaves(inout vec3 position) {
 	// Displace within a sphere, not a cube.
 	disp *= normalize(abs(disp));
 
-	position += disp.xzy * 0.1;
+	position += disp.xzy;
 }
 
 void calculateDisplacement(inout vec3 position) {
@@ -93,6 +92,7 @@ void calculateDisplacement(inout vec3 position) {
 		case 175: // Double plants
 			calculateWavingPlants(position, true); break;
 		case 18:  // Leaves (Oak, Spruce, Birch, Jungle)
+		case 106: // Vines (look better when treated as leaves here)
 		case 161: // Leaves 2 (Acacia, Dark Oak)
 			calculateWavingLeaves(position); break;
 		default: break;

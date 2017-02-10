@@ -76,10 +76,17 @@ vec3 calculateBloomTiles() {
 }
 #endif
 
+vec3 lowLightAdapt(vec3 cone, float exposure) {
+	float rod = dot(cone, vec3(15, 50, 35));
+	rod *= 1.0 - pow(smoothstep(0.0, 4.0, rod), 0.01);
+
+	return (rod + cone) * exposure;
+}
+
 void main() {
-	composite = texture(colortex5, fragCoord).rgb * exposure;
+	composite = lowLightAdapt(texture(colortex5, fragCoord).rgb, exposure);
 
 	#ifdef BLOOM
-	bloom = calculateBloomTiles() * exposure;
+	bloom = lowLightAdapt(calculateBloomTiles(), exposure);
 	#endif
 }

@@ -5,12 +5,13 @@
 #include "/cfg/global.scfg"
 
 #define PM
-#define PM_STEPS 32   // [16 32 64]
-#define PM_DEPTH 0.10 // [0.10 0.15 0.20 0.25 0.3]
+#define PM_STEPS 32   // [16 24 32 48 64]
+#define PM_DIST  30.0 // [10.0 20.0 30.0 40.0 50.0]
+#define PM_DEPTH 0.10 // [0.10 0.15 0.20 0.25 0.30]
 //#define PM_DEPTH_WRITE
 
 #define PSS
-#define PSS_STEPS 32 // [16 32 64]
+#define PSS_STEPS 32 // [16 24 32 48 64]
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
@@ -58,6 +59,13 @@ float delinearizeDepth(float depth) {
 
 vec3 calculateParallaxCoord(vec2 coord, vec3 dir) {
 	#ifdef PM
+	if (length(positionView) > PM_DIST) {
+		#ifdef PM_DEPTH_WRITE
+		gl_FragDepth = gl_FragCoord.z;
+		#endif
+		return vec3(coord, 1.0);
+	}
+
 	vec2 atlasTiles = textureSize(base, 0) / TEXTURE_RESOLUTION;
 	vec4 tcoord = vec4(fract(coord * atlasTiles), floor(coord * atlasTiles));
 
