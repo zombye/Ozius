@@ -4,6 +4,10 @@
 
 #include "/cfg/global.scfg"
 
+#define COMPOSITE
+
+#include "/cfg/hssrs.scfg"
+
 #define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
 
 //--// Structs //----------------------------------------------------------------------------------------//
@@ -62,6 +66,7 @@ uniform vec3 skyColor;
 
 uniform vec3 shadowLightPosition;
 
+uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse, gbufferModelViewInverse;
 uniform mat4 shadowProjection, shadowModelView;
 
@@ -87,9 +92,16 @@ uniform sampler2DShadow shadowtex1;
 
 //--//
 
+float linearizeDepth(float depth) {
+	return -1.0 / ((depth * 2.0 - 1.0) * gbufferProjectionInverse[2].w + gbufferProjectionInverse[3].w);
+}
 vec3 screenSpaceToViewSpace(vec3 screenSpace) {
 	vec4 viewSpace = gbufferProjectionInverse * vec4(screenSpace * 2.0 - 1.0, 1.0);
 	return viewSpace.xyz / viewSpace.w;
+}
+vec3 viewSpaceToScreenSpace(vec3 viewSpace) {
+	vec4 screenSpace = gbufferProjection * vec4(viewSpace, 1.0);
+	return (screenSpace.xyz / screenSpace.w) * 0.5 + 0.5;
 }
 vec3 viewSpaceToLocalSpace(vec3 viewSpace) {
 	return (gbufferModelViewInverse * vec4(viewSpace, 1.0)).xyz;

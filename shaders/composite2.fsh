@@ -111,9 +111,11 @@ vec3 viewSpaceToScreenSpace(vec3 viewSpace) {
 //--//
 
 vec3 skySun(vec3 viewVec, vec3 sunVec) {
-	const float sunRadiusCosine = cos(radians(0.5));
-	const float sunLuminance = 1.6e9; // Approx. luminance of the sun at noon.
-	return float(dot(viewVec, sunVec) > sunRadiusCosine) * sunLuminance * vec3(1.0, 0.96, 0.95);
+	const float radiusMult = 9; // Radius multiplier relative the Sun as seen from Earth. The Minecraft sun is approximately 9 degrees across, within roughly one 10th of a degree.
+	const float sunRadiusCosine = cos(radians(0.5 * radiusMult));
+	const float sunLuminance = 1.6e9 / pow(radiusMult, 2.0); // Approx. luminance of the Sun at noon. Accounts for radius multiplier, keeps bloom from going crazy.
+	const vec3  sunColor = vec3(1.0, 0.96, 0.95);
+	return float(dot(viewVec, sunVec) > sunRadiusCosine) * sunLuminance * sunColor;
 }
 
 vec3 getSky(vec3 dir) {

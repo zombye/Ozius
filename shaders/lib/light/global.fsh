@@ -99,11 +99,37 @@ float calculateShadows(vec3 positionLocal, vec3 normal) {
 	#endif
 }
 
+#ifdef HSSRS
+float calculateHSSRS(vec3 viewSpace, vec3 lightVector, vec3 normal) {
+	const float maxSteps = HSSRS_RAY_STEPS;
+	const float stepSize = HSSRS_RAY_LENGTH / HSSRS_RAY_STEPS;
+
+	vec3 increment = lightVector * stepSize;
+
+	for (uint i = 0; i < maxSteps; i++) {
+		viewSpace += increment;
+
+		vec3 screenSpace = viewSpaceToScreenSpace(viewSpace);
+		if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5)))) return 1.0;
+
+		float diff = viewSpace.z - linearizeDepth(texture(depthtex1, screenSpace.xy).r);
+		if (diff < 0.005 * viewSpace.z && diff > 0.05 * viewSpace.z) return 0.0;
+	}
+
+	return 1.0;
+}
+#endif
+
 vec3 calculateGlobalLight(worldStruct world, surfaceStruct surface) {
 	float diffuse = calculateDiffuse(world.globalLightVector, surface.normal, normalize(-surface.positionView), surface.material.roughness);
 	if (diffuse <= 0.0) return vec3(0.0);
 
 	float shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
+	#ifdef HSSRS
+	if (shadows > 0.0) {
+		shadows = min(calculateHSSRS(surface.positionView, world.globalLightVector, surface.normalGeom), shadows);
+	}
+	#endif
 
 	vec3 light = world.globalLightColor * diffuse * shadows;
 
