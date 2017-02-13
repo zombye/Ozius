@@ -151,6 +151,9 @@ void main() {
 	light.block = calculateBlockLight(light.engine.x);
 
 	composite = light.global + light.sky + light.block;
+
+	if (any(isnan(composite))) composite = vec3(0.0);
+
 	#if REFLECTION_SAMPLES > 0
 	composite *= surface.material.diffuse;
 	#else
