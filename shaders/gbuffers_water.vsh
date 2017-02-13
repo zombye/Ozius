@@ -5,6 +5,8 @@
 struct worldStruct {
 	vec3 globalLightVector;
 	vec3 globalLightColor;
+
+	vec3 upVector;
 };
 
 //--// Outputs //----------------------------------------------------------------------------------------//
@@ -33,6 +35,7 @@ layout (location = 12) in vec4 vertexTangent;
 uniform float sunAngle;
 
 uniform vec3 shadowLightPosition;
+uniform vec3 upPosition;
 
 uniform mat4 gbufferProjection, gbufferModelViewInverse;
 
@@ -70,4 +73,6 @@ void main() {
 
 	world.globalLightVector = normalize(shadowLightPosition);
 	world.globalLightColor  = mix(vec3(0.2), vec3(ILLUMINANCE_SUN), sunAngle < 0.5);
+
+	world.upVector = normalize(upPosition);
 }

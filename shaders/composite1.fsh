@@ -44,6 +44,8 @@ struct lightStruct {
 struct worldStruct {
 	vec3 globalLightVector;
 	vec3 globalLightColor;
+
+	vec3 upVector;
 };
 
 //--// Outputs //----------------------------------------------------------------------------------------//
@@ -145,7 +147,7 @@ void main() {
 		light.global = vec3(0.0);
 	}
 
-	light.sky   = calculateSkyLight(light.engine.y);
+	light.sky   = calculateSkyLight(surface.normal, world.upVector, light.engine.y);
 	light.block = calculateBlockLight(light.engine.x);
 
 	composite = light.global + light.sky + light.block;

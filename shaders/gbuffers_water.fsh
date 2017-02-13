@@ -38,6 +38,8 @@ struct lightStruct {
 struct worldStruct {
 	vec3 globalLightVector;
 	vec3 globalLightColor;
+
+	vec3 upVector;
 };
 
 //--// Outputs //----------------------------------------------------------------------------------------//
@@ -231,7 +233,7 @@ void main() {
 	light.engine = lmUV;
 
 	light.global = calculateGlobalLight(world, surface);
-	light.sky    = calculateSkyLight(light.engine.y);
+	light.sky    = calculateSkyLight(surface.normal, world.upVector, light.engine.y);
 	light.block  = calculateBlockLight(light.engine.x);
 
 	data0.rgb *= light.global + light.sky;
