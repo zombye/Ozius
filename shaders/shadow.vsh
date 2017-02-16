@@ -4,11 +4,12 @@
 
 out vec4 tint;
 out vec2 baseUV;
-out float blockID;
+out vec3 vertNormal;
 
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
 layout (location = 0)  in vec4 vertexPosition;
+layout (location = 2)  in vec3 vertexNormal;
 layout (location = 3)  in vec4 vertexColor;
 layout (location = 8)  in vec2 vertexUV;
 layout (location = 9)  in vec2 vertexLightmap;
@@ -31,6 +32,7 @@ uniform sampler2D noisetex;
 #include "/lib/preprocess.glsl"
 #include "/lib/time.glsl"
 
+#include "/lib/util/textureBicubic.glsl"
 #include "/lib/util/textureSmooth.glsl"
 
 //--//
@@ -62,4 +64,5 @@ void main() {
 
 	tint   = vertexColor;
 	baseUV = vertexUV;
+	vertNormal = gl_NormalMatrix * vertexNormal;
 }

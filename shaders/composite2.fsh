@@ -53,6 +53,7 @@ in worldStruct world;
 uniform int isEyeInWater;
 
 uniform float eyeAltitude;
+uniform ivec2 eyeBrightness;
 
 uniform float sunAngle;
 
@@ -62,7 +63,7 @@ uniform vec3 shadowLightPosition;
 uniform vec3 sunPosition;
 uniform vec3 upPosition;
 
-uniform mat4 gbufferProjection;
+uniform mat4 gbufferProjection, gbufferModelView;
 uniform mat4 gbufferProjectionInverse, gbufferModelViewInverse;
 uniform mat4 shadowProjection, shadowModelView;
 
@@ -111,7 +112,7 @@ vec3 viewSpaceToScreenSpace(vec3 viewSpace) {
 //--//
 
 vec3 skySun(vec3 viewVec, vec3 sunVec) {
-	const float radiusMult = 9; // Radius multiplier relative the Sun as seen from Earth. The Minecraft sun is approximately 9 degrees across, within roughly one 10th of a degree.
+	const float radiusMult = 9; // Radius multiplier relative the Sun as seen from Earth. The Minecraft sun is approximately 4.5 degrees across, within roughly one 10th of a degree.
 	const float sunRadiusCosine = cos(radians(0.5 * radiusMult));
 	const float sunLuminance = 1.6e9 / pow(radiusMult, 2.0); // Approx. luminance of the Sun at noon. Accounts for radius multiplier, keeps bloom from going crazy.
 	const vec3  sunColor = vec3(1.0, 0.96, 0.95);
@@ -123,7 +124,7 @@ vec3 getSky(vec3 dir) {
 	p /= maxof(abs(normalize(p)));
 
 	vec3 sky = texture(colortex7, p * 0.5 + 0.5).rgb;
-	sky += skySun(dir, (mat3(gbufferModelViewInverse) * normalize(sunPosition)).xzy);
+	sky += skySun(dir, normalize(mat3(gbufferModelViewInverse) * sunPosition).xzy);
 
 	return sky;
 }
@@ -162,7 +163,7 @@ vec3 calculateReflection(surfaceStruct surface) {
 		vec3 hitPos    = surface.positionView;
 
 		for (uint j = 0; j < bounces; j++) {
-			reflColor *= f_fresnel(max(dot(hitNormal, -rayDir), 0.0), hitMaterial.specular);
+			reflColor *= f_fresnel(max0(dot(hitNormal, -rayDir)), hitMaterial.specular);
 			if (reflColor == 0.0) break;
 
 			rayDir = reflect(rayDir, hitNormal);
@@ -197,13 +198,13 @@ vec3 waterFog(vec3 col, float dist) {
 vec3 calculateWaterShading(surfaceStruct surface) {
 	vec3 tex3Raw = textureRaw(colortex3, fragCoord).rgb;
 
-	vec3 screenPos = vec3(fragCoord, tex3Raw.g);
+	vec3 screenPos = vec3(fragCoord, tex3Raw.b);
 	vec3 viewPos   = screenSpaceToViewSpace(screenPos);
 
 	vec3 viewDir = normalize(viewPos);
 
-	vec3  normal = unpackNormal(tex3Raw.r);
-	float skyVis = tex3Raw.b;
+	vec3  normal = unpackNormal(tex3Raw.rg);
+	float skyVis = eyeBrightness.y / 240.0; // temp
 
 	vec3 f = saturate(f_fresnel(dot(normal, -viewDir), vec3(0.02)));
 
@@ -339,7 +340,7 @@ void main() {
 	surface.material = getMaterial(fragCoord);
 
 	surface.normal     = getNormal(fragCoord);
-	surface.normalGeom = getNormalGeom(fragCoord);
+	surface.normalGeom = normalize(cross(dFdx(surface.positionView), dFdy(surface.positionView)));
 
 	composite = texture(colortex5, fragCoord).rgb;
 

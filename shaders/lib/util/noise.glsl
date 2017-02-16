@@ -7,6 +7,14 @@
 float noise1(vec2 coord) {
 	return fract(sin(dot(coord, vec2(12.9898, 78.233))) * 43758.5453);
 }
+vec2 noise2(vec2 coord) {
+	vec2 dps = vec2(
+		dot(coord - 0.5, vec2(12.9898, 78.233)),
+		dot(coord + 0.5, vec2(12.9898, 78.233))
+	);
+
+	return fract(sin(dps) * 43758.5453);
+}
 vec3 noise3(vec2 coord) {
 	vec3 dps = vec3(
 		dot(coord - 1, vec2(12.9898, 78.233)),

@@ -7,6 +7,7 @@
 #define COMPOSITE
 
 #include "/cfg/hssrs.scfg"
+#include "/cfg/globalIllumination.scfg"
 
 #define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
 
@@ -34,7 +35,6 @@ struct surfaceStruct {
 
 struct lightStruct {
 	vec2 engine;
-	float pss;
 
 	vec3 global;
 	vec3 sky;
@@ -76,6 +76,10 @@ uniform sampler2D colortex0, colortex1;
 uniform sampler2D depthtex1;
 
 uniform sampler2DShadow shadowtex1;
+
+#ifdef GI
+uniform sampler2D colortex4;
+#endif
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -132,27 +136,27 @@ void main() {
 	surface.material = getMaterial(fragCoord);
 
 	surface.normal     = getNormal(fragCoord);
-	surface.normalGeom = getNormalGeom(fragCoord);
+	surface.normalGeom = normalize(cross(dFdx(surface.positionView), dFdy(surface.positionView)));
+
+	//--//
+
+	vec4 tex1BUnpack = unpackUnorm4x8(floatBitsToUint(textureRaw(colortex1, fragCoord).b));
 
 	//--//
 
 	lightStruct light;
 
-	light.pss = texture(colortex1, fragCoord).b;
-	light.engine = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a));
+	light.engine = tex1BUnpack.rg * tex1BUnpack.rg;
 
-	if (light.pss > 0) {
-		light.global = calculateGlobalLight(world, surface);
-	} else {
-		light.global = vec3(0.0);
-	}
-
+	light.global = calculateGlobalLight(world, surface, tex1BUnpack.b);
 	light.sky   = calculateSkyLight(surface.normal, world.upVector, light.engine.y);
 	light.block = calculateBlockLight(light.engine.x);
 
 	composite = light.global + light.sky + light.block;
 
 	if (any(isnan(composite))) composite = vec3(0.0);
+	if (any(isinf(composite))) composite = vec3(0.0);
+	composite = max(composite, vec3(0.0));
 
 	#if REFLECTION_SAMPLES > 0
 	composite *= surface.material.diffuse;

@@ -100,9 +100,11 @@ float calculateShadows(vec3 positionLocal, vec3 normal) {
 }
 
 #ifdef HSSRS
-float calculateHSSRS(vec3 viewSpace, vec3 lightVector, vec3 normal) {
+float calculateHSSRS(vec3 viewSpace, vec3 lightVector) {
 	const float maxSteps = HSSRS_RAY_STEPS;
-	const float stepSize = HSSRS_RAY_LENGTH / HSSRS_RAY_STEPS;
+	float stepSize = HSSRS_RAY_LENGTH / HSSRS_RAY_STEPS;
+	stepSize *= 1.0 / gbufferProjection[0].x;
+	stepSize *= -viewSpace.z;
 
 	vec3 increment = lightVector * stepSize;
 
@@ -120,18 +122,41 @@ float calculateHSSRS(vec3 viewSpace, vec3 lightVector, vec3 normal) {
 }
 #endif
 
-vec3 calculateGlobalLight(worldStruct world, surfaceStruct surface) {
-	float diffuse = calculateDiffuse(world.globalLightVector, surface.normal, normalize(-surface.positionView), surface.material.roughness);
-	if (diffuse <= 0.0) return vec3(0.0);
+#ifdef GI
+vec3 getGI(vec2 coord) {
+	return texture(colortex4, coord * GI_RESOLUTION).rgb;
+}
+#endif
 
-	float shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
-	#ifdef HSSRS
-	if (shadows > 0.0) {
-		shadows = min(calculateHSSRS(surface.positionView, world.globalLightVector, surface.normalGeom), shadows);
-	}
+vec3 calculateGlobalLight(
+	worldStruct world,
+	surfaceStruct surface
+	#ifdef COMPOSITE
+	, float shadows
 	#endif
+) {
+	float diffuse = calculateDiffuse(world.globalLightVector, surface.normal, normalize(-surface.positionView), surface.material.roughness);
+	#ifndef COMPOSITE
+	float shadows = 0.0;
+	#endif
+	if (diffuse > 0.0) {
+		#ifdef COMPOSITE
+		if (shadows > 0.0)
+		#endif
+		shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
+
+		#ifdef HSSRS
+		if (shadows > 0.0) {
+			shadows = min(calculateHSSRS(surface.positionView, world.globalLightVector), shadows);
+		}
+		#endif
+	}
 
 	vec3 light = world.globalLightColor * diffuse * shadows;
+
+	#ifdef GI
+	light += world.globalLightColor * getGI(surface.positionScreen.xy);
+	#endif
 
 	return light;
 }

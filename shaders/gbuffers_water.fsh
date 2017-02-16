@@ -205,9 +205,8 @@ void main() {
 	if (abs(blockID - 8.5) < 0.6) {
 		vec3 viewDir = normalize(positionView) * tbnMatrix;
 		data0 = vec4(0.0, 0.0, 0.0, 0.2);
-		data1.r = packNormal(calculateWaterNormal(positionLocal + cameraPosition, viewDir));
-		data1.g = gl_FragCoord.z;
-		data1.b = lmUV.y;
+		data1.rg = packNormal(calculateWaterNormal(positionLocal + cameraPosition, viewDir));
+		data1.b = gl_FragCoord.z;
 		data1.a = 1.0;
 
 		return;

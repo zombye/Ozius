@@ -4,14 +4,7 @@
 
 #include "/cfg/global.scfg"
 
-#define PM
-#define PM_STEPS 32   // [16 24 32 48 64]
-#define PM_DIST  30.0 // [10.0 20.0 30.0 40.0 50.0]
-#define PM_DEPTH 0.10 // [0.10 0.15 0.20 0.25 0.30]
-//#define PM_DEPTH_WRITE
-
-#define PSS
-#define PSS_STEPS 32 // [16 24 32 48 64]
+#include "/cfg/parallax.scfg"
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
@@ -126,16 +119,13 @@ void main() {
 
 	vec4 diff = vec4(baseTex.rgb, metadata.x / 255.0);
 	vec4 spec = texture(specular, pCoord.st);
+	vec4 emis = vec4(0.0);
 
 	//--//
 
-	packedMaterial.r = uintBitsToFloat(packUnorm4x8(diff));
-	packedMaterial.g = uintBitsToFloat(packUnorm4x8(spec));
-	packedMaterial.b = uintBitsToFloat(packUnorm4x8(vec4(0.0, 0.0, 0.0, 1.0)));
-	packedMaterial.a = 1.0;
+	packedMaterial = vec4(uintBitsToFloat(uvec3(packUnorm4x8(diff), packUnorm4x8(spec), packUnorm4x8(emis))), 1.0);
 
-	packedData.r = packNormal(getNormal(pCoord.st));
-	packedData.g = packNormal(tbnMatrix[2]);
-	packedData.b = calculateParallaxSelfShadow(pCoord, normalize(shadowLightPosition * tbnMatrix));
-	packedData.a = uintBitsToFloat(packUnorm2x16(lmUV));
+	packedData.rg = packNormal(getNormal(pCoord.st));
+	packedData.b = uintBitsToFloat(packUnorm4x8(vec4(sqrt(lmUV), calculateParallaxSelfShadow(pCoord, normalize(shadowLightPosition * tbnMatrix)), 0.0)));
+	packedData.a = 1.0;
 }

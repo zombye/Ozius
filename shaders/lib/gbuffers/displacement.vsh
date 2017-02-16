@@ -8,8 +8,8 @@ void calculateWavingPlants(inout vec3 position, bool doublePlant) {
 	vec2 pos = (position.xz + globalTime * 1.28) / textureSize(noisetex, 0);
 
 	// Main wind
-	disp = textureSmooth(noisetex, (pos / 16.0) + (globalTime * 0.01)).rg * 0.3 - 0.15;
-	disp *= 0.6 * rainStrength + 1.0;
+	disp  = textureBicubic(noisetex, (pos / 16.0) + (globalTime * 0.01)).rg - 0.5;
+	disp *= 0.5 + 0.3 * rainStrength;
 
 	// Small-scale turbulence
 	const uint oct = 4;
