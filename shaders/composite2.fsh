@@ -143,7 +143,11 @@ vec3 f0ToIOR(vec3 f0) {
 #include "/lib/composite/raytracer.fsh"
 
 vec3 is(vec3 normal, vec3 noise, float roughness) {
-	return normalize(normal + (noise * roughness));
+	if (roughness != 0.0) {
+		roughness = (1.0 / roughness) * (1.0 - roughness);
+		roughness = pow(dot(normal, noise) * -0.5 + 0.5, roughness);
+	}
+	return normalize(normal + noise * roughness);
 }
 
 vec3 calculateReflection(surfaceStruct surface) {
@@ -172,6 +176,7 @@ vec3 calculateReflection(surfaceStruct surface) {
 				reflection += texture(colortex5, hitCoord.st).rgb * reflColor;
 			} else if (skyVis > 0) {
 				reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis * reflColor;
+				break;
 			}
 
 			if (i < samples) {

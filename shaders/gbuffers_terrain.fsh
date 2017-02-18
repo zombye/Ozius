@@ -33,7 +33,7 @@ uniform sampler2D normals;
 
 //--// Global constants & variables //-------------------------------------------------------------------//
 
-#if PM_QUALITY > 0
+#ifdef PM
 float lodLevel = textureQueryLod(base, baseUV).x;
 #define texture(x, y) textureLod(x, y, lodLevel)
 #endif

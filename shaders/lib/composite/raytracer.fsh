@@ -7,10 +7,9 @@ bool raytraceIntersection(vec3 pos, vec3 vec, out vec3 screenSpace, out vec3 vie
 
 	vec3 increment = vec * stepSize;
 
-	viewSpace = pos + increment;
+	viewSpace = pos;
 
 	uint refinements = 0;
-
 	for (uint i = 0; i < maxSteps; i++) {
 		viewSpace  += increment;
 		screenSpace = viewSpaceToScreenSpace(viewSpace);
