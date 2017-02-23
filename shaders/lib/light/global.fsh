@@ -69,13 +69,42 @@ float sampleShadowsSoft(vec3 coord) {
 }
 #endif
 
-float calculateShadows(vec3 positionLocal, vec3 normal) {
+#ifdef HSSRS
+float calculateHSSRS(vec3 viewSpace, vec3 lightVector) {
+	vec3 increment = lightVector * HSSRS_RAY_LENGTH / HSSRS_RAY_STEPS;
+
+	for (uint i = 0; i < HSSRS_RAY_STEPS; i++) {
+		viewSpace += increment;
+
+		vec3 screenSpace = viewSpaceToScreenSpace(viewSpace);
+		if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5)))) return 1.0;
+
+		float diff = viewSpace.z - linearizeDepth(texture(depthtex1, screenSpace.xy).r);
+		if (diff < 0.005 * viewSpace.z && diff > 0.05 * viewSpace.z) return i / HSSRS_RAY_STEPS;
+	}
+
+	return 1.0;
+}
+#endif
+
+float calculateShadows(
+	vec3 positionLocal,
+	#ifdef HSSRS
+	vec3 positionView,
+	#endif
+	vec3 normal
+) {
 	vec3 shadowCoord = (shadowProjection * shadowModelView * vec4(positionLocal, 1.0)).xyz;
 
 	float distortCoeff = 1.0 + length(shadowCoord.xy);
 
+	#ifdef HSSRS
+	if (calculateHSSRS(positionView, world.globalLightVector * distortCoeff) < 1.0) return 0.0;
+	shadowCoord.z += HSSRS_RAY_LENGTH * shadowProjection[2].z * distortCoeff;
+	shadowCoord.z += 0.0002;
+	#else
 	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex1, 0).x) * shadowProjection[2].z;
-	zBias *= tan(acos(abs(dot(normalize(shadowLightPosition), normal))));
+	zBias *= min(tan(acos(abs(dot(normalize(shadowLightPosition), normal)))), 5.0);
 	zBias *= mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
 
 	#if SHADOW_SAMPLING_TYPE == 1
@@ -86,6 +115,7 @@ float calculateShadows(vec3 positionLocal, vec3 normal) {
 	zBias -= (0.0059 * shadowProjection[0].x) * SQRT2;
 
 	shadowCoord.z += zBias;
+	#endif
 
 	shadowCoord.xy /= distortCoeff;
 	shadowCoord.z *= 0.25;
@@ -98,29 +128,6 @@ float calculateShadows(vec3 positionLocal, vec3 normal) {
 	return sampleShadowsSoft(shadowCoord);
 	#endif
 }
-
-#ifdef HSSRS
-float calculateHSSRS(vec3 viewSpace, vec3 lightVector) {
-	const float maxSteps = HSSRS_RAY_STEPS;
-	float stepSize = HSSRS_RAY_LENGTH / HSSRS_RAY_STEPS;
-	stepSize *= 1.0 / gbufferProjection[0].x;
-	stepSize *= -viewSpace.z;
-
-	vec3 increment = lightVector * stepSize;
-
-	for (uint i = 0; i < maxSteps; i++) {
-		viewSpace += increment;
-
-		vec3 screenSpace = viewSpaceToScreenSpace(viewSpace);
-		if (any(greaterThan(abs(screenSpace - 0.5), vec3(0.5)))) return 1.0;
-
-		float diff = viewSpace.z - linearizeDepth(texture(depthtex1, screenSpace.xy).r);
-		if (diff < 0.005 * viewSpace.z && diff > 0.05 * viewSpace.z) return 0.0;
-	}
-
-	return 1.0;
-}
-#endif
 
 #ifdef GI
 vec3 getGI(vec2 coord) {
@@ -140,16 +147,13 @@ vec3 calculateGlobalLight(
 	float shadows = 0.0;
 	#endif
 	if (diffuse > 0.0) {
-		#ifdef COMPOSITE
-		if (shadows > 0.0)
-		#endif
-		shadows = calculateShadows(surface.positionLocal, surface.normalGeom);
-
-		#ifdef HSSRS
-		if (shadows > 0.0) {
-			shadows = min(calculateHSSRS(surface.positionView, world.globalLightVector), shadows);
-		}
-		#endif
+		shadows = calculateShadows(
+			surface.positionLocal,
+			#ifdef HSSRS
+			surface.positionView,
+			#endif
+			surface.normalGeom
+		);
 	}
 
 	vec3 light = world.globalLightColor * diffuse * shadows;
