@@ -11,22 +11,19 @@
 
 #define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
 
+//--// Whatever I end up naming this //------------------------------------------------------------------//
+
+#include "/lib/materials.glsl"
+
 //--// Structs //----------------------------------------------------------------------------------------//
 
-struct materialStruct {
-	vec3 diffuse;  // RGB of base texture
-	vec3 specular; // Currently R of specular texture
-
-	float roughness; // Currently B of specular texture
-};
-
 struct surfaceStruct {
-	materialStruct material;
+	material mat;
 
 	vec3 normal;
 	vec3 normalGeom;
 
-	vec2 depth; // y is linearized
+	float depth;
 
 	vec3 positionScreen; // Position in screen-space
 	vec3 positionView;   // Position in view-space
@@ -93,7 +90,6 @@ uniform sampler2D colortex4;
 
 //--//
 
-#include "/lib/composite/get/material.fsh"
 #include "/lib/composite/get/normal.fsh"
 
 //--//
@@ -131,9 +127,7 @@ void main() {
 	surface.positionView   = screenSpaceToViewSpace(surface.positionScreen);
 	surface.positionLocal  = viewSpaceToLocalSpace(surface.positionView);
 
-	surface.depth.y = surface.positionView.z;
-
-	surface.material = getMaterial(fragCoord);
+	surface.mat = getPackedMaterial(colortex0, fragCoord);
 
 	surface.normal     = getNormal(fragCoord);
 	surface.normalGeom = normalize(cross(dFdx(surface.positionView), dFdy(surface.positionView)));
@@ -159,8 +153,8 @@ void main() {
 	composite = max(composite, vec3(0.0));
 
 	#if REFLECTION_SAMPLES > 0
-	composite *= surface.material.diffuse;
+	composite *= surface.mat.diffuse;
 	#else
-	composite *= mix(surface.material.diffuse, vec3(1.0), surface.material.specular);
+	composite *= mix(surface.mat.diffuse, vec3(1.0), surface.mat.specular);
 	#endif
 }

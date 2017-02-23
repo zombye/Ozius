@@ -1,5 +1,9 @@
 #version 420
 
+//--// Configuration //----------------------------------------------------------------------------------//
+
+#include "/cfg/global.scfg"
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 /* DRAWBUFFERS:01 */
@@ -20,7 +24,7 @@ uniform sampler2D base;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 void main() {
-	color  = texture(base, baseUV) * tint;
-	color.rgb = pow(color.rgb, vec3(2.2));
-	normal = vertNormal * 0.5 + 0.5;
+	color     = texture(base, baseUV) * tint;
+	color.rgb = pow(color.rgb, vec3(GAMMA));
+	normal    = vertNormal * 0.5 + 0.5;
 }

@@ -4,18 +4,14 @@
 
 #include "/cfg/global.scfg"
 
+//--// Whatever I end up naming this //------------------------------------------------------------------//
+
+#include "/lib/materials.glsl"
+
 //--// Structs //----------------------------------------------------------------------------------------//
 
-struct materialStruct {
-	vec3  albedo;    // RGB of base texture.
-	float specular;  // Specular R channel. In SEUS v11.0: Specularity
-	float metallic;  // Specular G channel. In SEUS v11.0: Additive rain specularity
-	float roughness; // Specular B channel. In SEUS v11.0: Roughness / Glossiness
-	float clearcoat; // Specular A channel. In SEUS v11.0: Unused
-};
-
 struct surfaceStruct {
-	materialStruct material;
+	material mat;
 
 	vec3 normal;
 	vec3 normalGeom;
@@ -88,21 +84,6 @@ uniform sampler2DShadow shadowtex1;
 
 //--//
 
-materialStruct getMaterial(vec2 uv) {
-	materialStruct material;
-
-	vec3 diff = texture(base,     uv).rgb;
-	vec4 spec = texture(specular, uv);
-
-	material.albedo    = pow(diff.rgb, vec3(GAMMA));
-	material.specular  = spec.r;
-	material.metallic  = spec.g;
-	material.roughness = spec.b;
-	material.clearcoat = spec.a;
-
-	return material;
-}
-
 vec3 getNormal(vec2 coord) {
 	vec3 tsn = texture(normals, coord).rgb;
 	tsn.xy += 0.5 / 255.0; // Need to add this for correct results.
@@ -111,8 +92,8 @@ vec3 getNormal(vec2 coord) {
 
 //--//
 
-float sharpenWave(float wave, float amount) {
-	const float m = 0.1;
+float sharpenWave(float wave, float sharpness, float amount) {
+	float m = 1.0 - sharpness;
 
 	float swave = abs(wave * 2.0 - 1.0);
 	if (swave < 2.0 * m) swave = ((0.25 / m) * swave * swave) + m;
@@ -159,10 +140,10 @@ float calculateWaterWaves(vec2 pos) {
 
 	float wave = 0.0;
 
-	wave -= height.x * sharpenWave(smoothNoise(p0), sharpn.x);
-	wave -= height.y * sharpenWave(smoothNoise(p1), sharpn.y);
-	wave -= height.z * sharpenWave(smoothNoise(p2), sharpn.z);
-	wave -= height.w * sharpenWave(smoothNoise(p3), sharpn.w);
+	wave -= height.x * sharpenWave(smoothNoise(p0), 0.1, sharpn.x);
+	wave -= height.y * sharpenWave(smoothNoise(p1), 0.1, sharpn.y);
+	wave -= height.z * sharpenWave(smoothNoise(p2), 0.1, sharpn.z);
+	wave -= height.w * sharpenWave(smoothNoise(p3), 0.1, sharpn.w);
 
 	return wave;
 }
@@ -220,7 +201,7 @@ void main() {
 	data0.rgb = pow(data0.rgb, vec3(GAMMA));
 
 	surfaceStruct surface;
-	surface.material = getMaterial(baseUV);
+	surface.mat = getMaterial(base, specular, baseUV);
 
 	surface.positionView  = positionView;
 	surface.positionLocal = positionLocal;

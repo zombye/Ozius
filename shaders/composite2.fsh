@@ -9,22 +9,19 @@
 #define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
 #define REFLECTION_BOUNCES 1 // [1 2]
 
+//--// Whatever I end up naming this //------------------------------------------------------------------//
+
+#include "/lib/materials.glsl"
+
 //--// Structs //----------------------------------------------------------------------------------------//
 
-struct materialStruct {
-	vec3 diffuse;  // RGB of base texture
-	vec3 specular; // Currently R of specular texture
-
-	float roughness; // Currently B of specular texture
-};
-
 struct surfaceStruct {
-	materialStruct material;
+	material mat;
 
 	vec3 normal;
 	vec3 normalGeom;
 
-	vec2 depth; // x = exponential, y = linear
+	float depth;
 
 	vec3 positionScreen; // Position in screen-space
 	vec3 positionView;   // Position in view-space
@@ -89,7 +86,6 @@ uniform sampler2DShadow shadowtex1;
 
 //--//
 
-#include "/lib/composite/get/material.fsh"
 #include "/lib/composite/get/normal.fsh"
 
 //--//
@@ -150,7 +146,7 @@ vec3 is(vec3 normal, vec3 noise, float roughness) {
 	return normalize(normal + noise * roughness);
 }
 
-vec3 calculateReflection(surfaceStruct surface) {
+vec3 calculateReflection(surfaceStruct surface) { 
 	float skyVis = unpackUnorm2x16(floatBitsToUint(textureRaw(colortex1, fragCoord).a)).y;
 
 	vec3 reflection = vec3(0.0);
@@ -159,7 +155,7 @@ vec3 calculateReflection(surfaceStruct surface) {
 	for (uint i = 0; i < samples; i++) {
 		vec3 rayDir = normalize(surface.positionView);
 
-		materialStruct hitMaterial = surface.material;
+		material hitMaterial = surface.mat;
 		vec3 hitNormal = is(surface.normal, normalize(noise3(fragCoord + i) * 2.0 - 1.0), hitMaterial.roughness);
 
 		vec3 reflColor = vec3(1.0);
@@ -179,10 +175,8 @@ vec3 calculateReflection(surfaceStruct surface) {
 				break;
 			}
 
-			if (i < samples) {
-				hitMaterial = getMaterial(hitCoord.st);
-				hitNormal   = is(getNormal(hitCoord.st), normalize(noise3(fragCoord + i) * 2.0 - 1.0), hitMaterial.roughness);
-			}
+			hitMaterial = getPackedMaterial(colortex0, hitCoord.st);
+			hitNormal   = is(getNormal(hitCoord.st), normalize(noise3(fragCoord + i) * 2.0 - 1.0), hitMaterial.roughness);
 		}
 	}
 
@@ -340,9 +334,7 @@ void main() {
 		return;
 	}
 
-	surface.depth.y = surface.positionView.z;
-
-	surface.material = getMaterial(fragCoord);
+	surface.mat = getPackedMaterial(colortex0, fragCoord);
 
 	surface.normal     = getNormal(fragCoord);
 	surface.normalGeom = normalize(cross(dFdx(surface.positionView), dFdy(surface.positionView)));
@@ -352,11 +344,13 @@ void main() {
 	bool waterMask = texture(colortex3, fragCoord).a > 0.0;
 
 	#if REFLECTION_SAMPLES > 0
-	if (any(greaterThan(surface.material.specular, vec3(0.0))) && !waterMask) {
-		composite *= saturate(1.0 - f_fresnel(max(dot(surface.normal, -normalize(surface.positionView)), 0.0), surface.material.specular)*surface.material.roughness);
-		composite += calculateReflection(surface) * (1.0 - surface.material.roughness);
+	if (any(greaterThan(surface.mat.specular, vec3(0.0))) && !waterMask) {
+		composite *= saturate(1.0 - f_fresnel(max(dot(surface.normal, -normalize(surface.positionView)), 0.0), surface.mat.specular)*surface.mat.roughness);
+		composite += calculateReflection(surface) * (1.0 - surface.mat.roughness);
 	}
 	#endif
+
+	composite += surface.mat.emission * ILLUMINANCE_BLOCK;
 
 	if (waterMask) {
 		composite = calculateWaterShading(surface);
@@ -365,7 +359,7 @@ void main() {
 	}
 
 	#ifdef VL
-	composite = calculateVolumetricLight(composite, normalize(surface.positionView), surface.depth.y);
+	composite = calculateVolumetricLight(composite, normalize(surface.positionView), surface.positionView.z);
 	#endif
 
 	if (waterMask) composite /= 0.8; // Water needs some opacity to render, this hides the effects of that.

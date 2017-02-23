@@ -18,7 +18,7 @@ const float shadowDistance      = 16.0; // [16.0 32.0]
 
 //--// Texture formats
 /*
-const int colortex0Format = RGB32F;  // Material
+const int colortex0Format = RG32F;   // Material
 const int colortex1Format = RGB32F;  // Normals, lightmap
 const int colortex2Format = RGBA32F; // Transparent surfaces
 const int colortex3Format = RGBA32F; // Water data

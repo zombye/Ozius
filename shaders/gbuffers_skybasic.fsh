@@ -69,8 +69,8 @@ bool rsib(vec3 pos, vec3 dir, float radSq) {
 vec3 skyAtmosphere(vec3 viewDir) {
 	//--// Constants
 
-	const uint iSteps = 8;
-	const uint jSteps = 1;
+	const uint iSteps = 16;
+	const uint jSteps = 2; // 2 is pretty much the minimum that's somewhat accurate
 
 	const vec3 sunLightCol  = vec3(ILLUMINANCE_SUN);
 	const vec3 moonLightCol = vec3(0.2);
@@ -149,4 +149,3 @@ void main() {
 	sky.rgb = skyAtmosphere(unprojectSky(fragCoord));
 	sky.a = 1.0;
 }
- 

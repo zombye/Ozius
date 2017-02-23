@@ -142,7 +142,7 @@ vec3 calculateGlobalLight(
 	, float shadows
 	#endif
 ) {
-	float diffuse = calculateDiffuse(world.globalLightVector, surface.normal, normalize(-surface.positionView), surface.material.roughness);
+	float diffuse = calculateDiffuse(world.globalLightVector, surface.normal, normalize(-surface.positionView), surface.mat.roughness);
 	#ifndef COMPOSITE
 	float shadows = 0.0;
 	#endif
