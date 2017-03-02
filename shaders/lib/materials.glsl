@@ -21,7 +21,7 @@ material getPackedMaterial(sampler2D pack, vec2 coord) {
 
 	upm.diffuse   = pow(diff.rgb, vec3(GAMMA));
 	upm.specular  = vec3(min(spec.r, 0.999));
-	upm.emission  = vec3(1.0 - spec.a);
+	upm.emission  = vec3(0.0);
 	upm.roughness = 1.0 - spec.b; upm.roughness *= upm.roughness;
 
 	return upm;
