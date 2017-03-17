@@ -39,7 +39,7 @@ float diffuseOrenNayar(vec3 light, vec3 normal, vec3 view, float roughness) {
 }
 #define calculateDiffuse(x, y, z, w) diffuseOrenNayar(x, y, z, w)
 
-#define SHADOW_SAMPLING_TYPE 1 // 0 = Single sample. 1 = 21-sample soft shadows. [0 1]
+#define SHADOW_SAMPLING_TYPE 1 // 0 = Single sample. 1 = 12-sample soft shadows. [0 1]
 
 #if SHADOW_SAMPLING_TYPE == 0
 float sampleShadows(vec3 coord) {
@@ -49,19 +49,17 @@ float sampleShadows(vec3 coord) {
 }
 #elif SHADOW_SAMPLING_TYPE == 1
 float sampleShadowsSoft(vec3 coord) {
-	float shadow = 0.0;
-
-	const vec2[21] offset = vec2[21](
-		              vec2(-1,  2), vec2(0,  2), vec2(1,  2),
-		vec2(-2,  1), vec2(-1,  1), vec2(0,  1), vec2(1,  1), vec2(2,  1),
-		vec2(-2,  0), vec2(-1,  0), vec2(0,  0), vec2(1,  0), vec2(2,  0),
-		vec2(-2, -1), vec2(-1, -1), vec2(0, -1), vec2(1, -1), vec2(2, -1),
-		              vec2(-1, -2), vec2(0, -2), vec2(1, -2)
+	const vec2[12] offset = vec2[12](
+		                 vec2(-0.5, 1.5), vec2( 0.5, 1.5),
+		vec2(-1.5, 0.5), vec2(-0.5, 0.5), vec2( 0.5, 0.5), vec2( 1.5, 0.5),
+		vec2(-1.5,-0.5), vec2(-0.5,-0.5), vec2( 0.5,-0.5), vec2( 1.5,-0.5),
+		                 vec2(-0.5,-1.5), vec2( 0.5,-1.5)
 	);
+	vec2 resolution = textureSize(shadowtex1, 0);
 
+	float shadow = 0.0;
 	for (int i = 0; i < offset.length(); i++) {
-		vec3 offsCoord = coord + vec3(offset[i] / textureSize(shadowtex1, 0), 0);
-		shadow += texture(shadowtex1, offsCoord);
+		shadow += texture(shadowtex1, coord + vec3(offset[i] / resolution, 0));
 	}
 	shadow /= offset.length(); shadow *= shadow;
 
@@ -104,7 +102,7 @@ float calculateShadows(
 	shadowCoord.z += 0.0002;
 	#else
 	float zBias = ((2.0 / shadowProjection[0].x) / textureSize(shadowtex1, 0).x) * shadowProjection[2].z;
-	zBias *= min(tan(acos(abs(dot(normalize(shadowLightPosition), normal)))), 5.0);
+	zBias *= min(tan(acos(abs(dot(world.globalLightVector, normal)))), 5.0);
 	zBias *= mix(1.0, SQRT2, abs(shadowAngle - 0.25) * 4.0);
 
 	#if SHADOW_SAMPLING_TYPE == 1
