@@ -100,17 +100,16 @@ float sharpenWave(float wave, float sharpness, float amount) {
 	return mix(wave, swave, amount);
 }
 float smoothNoise(vec2 coord) {
-	vec2 fr = fract(coord);
 	vec2 fl = floor(coord);
-
 	vec4 ns = vec4(
 		noise1(fl + vec2(-0.5,-0.5)), noise1(fl + vec2( 0.5,-0.5)),
 		noise1(fl + vec2(-0.5, 0.5)), noise1(fl + vec2( 0.5, 0.5))
 	);
 
-	fr *= fr * (3.0 - 2.0 * fr);
+	vec2 fr = fract(coord); fr *= fr * (3.0 - 2.0 * fr);
 
-	return mix(mix(ns.x, ns.y, fr.x), mix(ns.z, ns.w, fr.x), fr.y);
+	fl = mix(ns.xz, ns.yw, fr.x);
+	return mix(fl.x, fl.y, fr.y);
 }
 float calculateWaterWaves(vec2 pos) {
 	//--//
@@ -119,8 +118,8 @@ float calculateWaterWaves(vec2 pos) {
 	const vec4 height = vec4( 0.01, 0.03, 0.06, 0.10);
 	const vec4 length = vec4( 0.63, 1.26, 1.65, 3.23);
 	const vec4 rotate = vec4(-0.10, 0.30, 0.50, 0.50);
-	const vec4 toxamt = vec4( 0.10, 0.40, 1.50, 1.50); // Need a better name for these two...
-	const vec4 toyamt = vec4(-1.20, 1.10, 1.50, 1.70); // This will have to do for now.
+	const vec4 skewx  = vec4( 0.10, 0.40, 1.50, 1.50);
+	const vec4 skewy  = vec4(-1.20, 1.10, 1.50, 1.70);
 	const vec4 sharpn = vec4( 0.00, 0.20, 0.00, 0.60);
 
 	const vec4 k = TAU / length;
@@ -133,10 +132,10 @@ float calculateWaterWaves(vec2 pos) {
 	const mat2 r2 = mat2(cos(rotate.z), sin(rotate.z) / aspect.z, -sin(rotate.z), cos(rotate.z) / aspect.z) * k.z / TAU;
 	const mat2 r3 = mat2(cos(rotate.w), sin(rotate.w) / aspect.w, -sin(rotate.w), cos(rotate.w) / aspect.w) * k.w / TAU;
 
-	vec2 p0 = (r0 * pos) - vec2(omega.x * globalTime, 0.0); p0 += p0.yx * vec2(toxamt.x, toyamt.x);
-	vec2 p1 = (r1 * pos) - vec2(omega.y * globalTime, 0.0); p1 += p1.yx * vec2(toxamt.y, toyamt.y);
-	vec2 p2 = (r2 * pos) - vec2(omega.z * globalTime, 0.0); p2 += p2.yx * vec2(toxamt.z, toyamt.z);
-	vec2 p3 = (r3 * pos) - vec2(omega.w * globalTime, 0.0); p3 += p3.yx * vec2(toxamt.w, toyamt.w);
+	vec2 p0 = (r0 * pos) - vec2(omega.x * globalTime, 0.0); p0 += p0.yx * vec2(skewx.x, skewy.x);
+	vec2 p1 = (r1 * pos) - vec2(omega.y * globalTime, 0.0); p1 += p1.yx * vec2(skewx.y, skewy.y);
+	vec2 p2 = (r2 * pos) - vec2(omega.z * globalTime, 0.0); p2 += p2.yx * vec2(skewx.z, skewy.z);
+	vec2 p3 = (r3 * pos) - vec2(omega.w * globalTime, 0.0); p3 += p3.yx * vec2(skewx.w, skewy.w);
 
 	float wave = 0.0;
 
