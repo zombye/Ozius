@@ -140,11 +140,34 @@ vec3 calculateGlobalLight(
 	, float shadows
 	#endif
 ) {
-	float diffuse = calculateDiffuse(world.globalLightVector, surface.normal, normalize(-surface.positionView), surface.mat.roughness);
+	bool translucent =
+	   surface.mat.id == 18
+	|| surface.mat.id == 30
+	|| surface.mat.id == 31
+	|| surface.mat.id == 37
+	|| surface.mat.id == 38
+	|| surface.mat.id == 59
+	|| surface.mat.id == 83
+	|| surface.mat.id == 106
+	|| surface.mat.id == 111
+	|| surface.mat.id == 141
+	|| surface.mat.id == 142
+	|| surface.mat.id == 161
+	|| surface.mat.id == 175
+	|| surface.mat.id == 207;
+
+	vec3 diffuse;
+	if (translucent) {
+		float NoL = dot(surface.normal, world.globalLightVector);
+
+		// Not realistic but looks good.
+		diffuse = mix(surface.mat.diffuse * 0.65 + 0.35, vec3(1.0), NoL * 0.5 + 0.5) * (abs(NoL) * 0.5 + 0.5) / PI;
+	} else diffuse = vec3(calculateDiffuse(world.globalLightVector, surface.normal, normalize(-surface.positionView), surface.mat.roughness));
+
 	#ifndef COMPOSITE
 	float shadows = 0.0;
 	#endif
-	if (diffuse > 0.0) {
+	if (any(greaterThan(diffuse, vec3(0.0)))) {
 		shadows = calculateShadows(
 			surface.positionLocal,
 			#ifdef HSSRS

@@ -49,6 +49,7 @@ in vec2 fragCoord;
 
 uniform mat4 gbufferProjectionInverse, gbufferModelViewInverse;
 
+uniform sampler2D colortex0;
 uniform sampler2D colortex1;
 uniform sampler2D depthtex1;
 
@@ -88,7 +89,7 @@ vec2 projectShadowSpace(vec2 pos) {
 #include "/lib/util/packing/normal.glsl"
 #include "/lib/composite/get/normal.fsh"
 
-vec3 calculateGI(vec3 positionLocal, vec3 normal) {
+vec3 calculateGI(vec3 positionLocal, vec3 normal, bool translucent) {
 	const float stp = 0.5 * (GI_RADIUS / (sqrt(GI_SAMPLES) - 1.0));
 	vec2 noise = noise2(fragCoord) * stp - (0.5 * stp); // 4x slower for same sample count, but looks 10x better. difference decreases as sample count increases
 
@@ -115,7 +116,7 @@ vec3 calculateGI(vec3 positionLocal, vec3 normal) {
 
 			vec3 sampleNormal = textureLod(shadowcolor1, sampleCoord, 2).rgb * -2.0 + 1.0;
 			vec3 ams = max(vec3(inversesqrt(diffd2) * diffp * mat2x3(shadowNormal, sampleNormal), -sampleNormal.z), 0.0);
-			float am = ams.x * ams.y * ams.z;
+			float am = mix(ams.x * ams.y, 1.0, translucent) * ams.z;
 			if (am <= 0.0) continue;
 
 			result += textureLod(shadowcolor0, sampleCoord, 5).rgb * am * dm;
@@ -131,7 +132,27 @@ vec3 calculateGI(vec3 positionLocal, vec3 normal) {
 void main() {
 	#ifdef GI
 	vec2 gifc = fragCoord * (1.0 / GI_RESOLUTION);
-	if (all(lessThan(gifc, vec2(1.0)))) gi = calculateGI(viewSpaceToLocalSpace(screenSpaceToViewSpace(vec3(gifc, texture(depthtex1, gifc).r))), getNormal(gifc));
+	if (all(lessThan(gifc, vec2(1.0)))) {
+		int id = int(unpackUnorm4x8(floatBitsToUint(texelFetch(colortex0, ivec2(gifc * textureSize(colortex0, 0)), 0).r)).a * 255.0);
+
+		bool translucent =
+		   id == 18
+		|| id == 30
+		|| id == 31
+		|| id == 37
+		|| id == 38
+		|| id == 59
+		|| id == 83
+		|| id == 106
+		|| id == 111
+		|| id == 141
+		|| id == 142
+		|| id == 161
+		|| id == 175
+		|| id == 207;
+
+		gi = calculateGI(viewSpaceToLocalSpace(screenSpaceToViewSpace(vec3(gifc, texture(depthtex1, gifc).r))), getNormal(gifc), translucent);
+	}
 	else
 	#endif
 	gi = vec3(0.0);
