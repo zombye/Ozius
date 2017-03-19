@@ -188,10 +188,13 @@ vec3 calculateReflection(surfaceStruct surface) {
 //--//
 
 vec3 waterFog(vec3 col, float dist) {
-	const vec3  fogColor   = vec3(0.1, 0.6, 0.9);
-	const float fogDensity = 0.4;
+	const vec3 acoeff = vec3(4.00, 0.65, 0.45);
+	const vec3 scoeff = vec3(0.3, 2.7, 3.5) * 5e-3;
 
-	return col * exp(-dist * (fogDensity / fogColor));
+	vec3 transmittance = exp(-acoeff * dist);
+	vec3 scattered = scoeff * (1.0 - exp(-acoeff * dist)) / acoeff;
+
+	return col * transmittance + world.globalLightColor * scattered;
 }
 
 vec3 calculateWaterShading(surfaceStruct surface) {

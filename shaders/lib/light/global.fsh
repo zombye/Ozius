@@ -89,6 +89,7 @@ float calculateShadows(
 	vec3 positionLocal,
 	#ifdef HSSRS
 	vec3 positionView,
+	bool translucent,
 	#endif
 	vec3 normal
 ) {
@@ -97,7 +98,7 @@ float calculateShadows(
 	float distortCoeff = 1.0 + length(shadowCoord.xy);
 
 	#ifdef HSSRS
-	if (calculateHSSRS(positionView, world.globalLightVector * distortCoeff) < 1.0) return 0.0;
+	if (calculateHSSRS(positionView, world.globalLightVector * distortCoeff) < 1.0 && !translucent) return 0.0;
 	shadowCoord.z += HSSRS_RAY_LENGTH * shadowProjection[2].z * distortCoeff;
 	shadowCoord.z += 0.0002;
 	#else
@@ -172,6 +173,7 @@ vec3 calculateGlobalLight(
 			surface.positionLocal,
 			#ifdef HSSRS
 			surface.positionView,
+			translucent,
 			#endif
 			surface.normalGeom
 		);
