@@ -4,10 +4,16 @@
 
 out vec2 fragCoord;
 
+out float avglum;
+
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
 layout (location = 0) in vec2 vertexPosition;
 layout (location = 8) in vec2 vertexUV;
+
+//--// Uniforms //---------------------------------------------------------------------------------------//
+
+uniform sampler2D colortex5;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -16,4 +22,6 @@ void main() {
 	gl_Position.zw = vec2(1.0);
 
 	fragCoord = vertexUV;
+
+	avglum = dot(textureLod(colortex5, vec2(0.5), 100).rgb, vec3(1.0 / 3.0));
 }

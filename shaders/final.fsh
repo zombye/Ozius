@@ -6,6 +6,8 @@
 
 #include "/cfg/bloom.scfg"
 
+const bool colortex5MipmapEnabled = true;
+
 //--// Outputs //----------------------------------------------------------------------------------------//
 
 /* DRAWBUFFERS:0 */
@@ -15,6 +17,8 @@ layout (location = 0) out vec3 finalColor;
 //--// Inputs //-----------------------------------------------------------------------------------------//
 
 in vec2 fragCoord;
+
+in float avglum;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
@@ -27,7 +31,11 @@ uniform sampler2D colortex4;
 #endif
 uniform sampler2D colortex5;
 
+uniform float blindness;
+
 //--// Functions //--------------------------------------------------------------------------------------//
+
+#include "/lib/preprocess.glsl"
 
 #include "/lib/util/textureBicubic.glsl"
 
@@ -35,32 +43,28 @@ uniform sampler2D colortex5;
 
 #ifdef BLOOM
 void applyBloom(inout vec3 color) {
-	const float[7] weight = float[7](
-		pow(1, -BLOOM_CURVE),
-		pow(2, -BLOOM_CURVE),
-		pow(3, -BLOOM_CURVE),
-		pow(4, -BLOOM_CURVE),
-		pow(5, -BLOOM_CURVE),
-		pow(6, -BLOOM_CURVE),
-		pow(7, -BLOOM_CURVE)
-	);
-	const float weights = weight[0] + weight[1] + weight[2] + weight[3] + weight[4] + weight[5] + weight[6];
-
 	vec2 px = 1.0 / vec2(viewWidth, viewHeight);
 
 	vec3
-	bloom  = textureBicubic(colortex4, (fragCoord / exp2(1)) + vec2(0.00000           , 0.00000           )).rgb * weight[0];
-	bloom += textureBicubic(colortex4, (fragCoord / exp2(2)) + vec2(0.00000           , 0.50000 + px.y * 2)).rgb * weight[1];
-	bloom += textureBicubic(colortex4, (fragCoord / exp2(3)) + vec2(0.25000 + px.x * 2, 0.50000 + px.y * 2)).rgb * weight[2];
-	bloom += textureBicubic(colortex4, (fragCoord / exp2(4)) + vec2(0.25000 + px.x * 2, 0.62500 + px.y * 4)).rgb * weight[3];
-	bloom += textureBicubic(colortex4, (fragCoord / exp2(5)) + vec2(0.31250 + px.x * 4, 0.62500 + px.y * 4)).rgb * weight[4];
-	bloom += textureBicubic(colortex4, (fragCoord / exp2(6)) + vec2(0.31250 + px.x * 4, 0.65625 + px.y * 6)).rgb * weight[5];
-	bloom += textureBicubic(colortex4, (fragCoord / exp2(7)) + vec2(0.46875 + px.x * 6, 0.65625 + px.y * 6)).rgb * weight[6];
-	bloom /= weights;
+	bloom  = textureBicubic(colortex4, (fragCoord / exp2(1)) + vec2(0.00000           , 0.00000           )).rgb * 0.475;
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(2)) + vec2(0.00000           , 0.50000 + px.y * 19)).rgb * 0.625;
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(3)) + vec2(0.25000 + px.x * 2, 0.50000 + px.y * 19)).rgb * 0.750;
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(4)) + vec2(0.25000 + px.x * 2, 0.62500 + px.y * 37)).rgb * 0.850;
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(5)) + vec2(0.31250 + px.x * 4, 0.62500 + px.y * 37)).rgb * 0.925;
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(6)) + vec2(0.31250 + px.x * 4, 0.65625 + px.y * 55)).rgb * 0.975;
+	bloom += textureBicubic(colortex4, (fragCoord / exp2(7)) + vec2(0.46875 + px.x * 6, 0.65625 + px.y * 55)).rgb * 1.000;
+	bloom /= 5.6;
 
 	color = mix(color, bloom, BLOOM_AMOUNT * 0.5);
 }
 #endif
+
+void lowLightAdapt(inout vec3 color) { 
+  float rod = dot(color, vec3(15, 50, 35)); 
+  rod *= 1.0 - pow(smoothstep(0.0, 4.0, rod), 0.01); 
+
+  color = (rod + color) * clamp(0.3 / avglum, 2e-5, 0.1); 
+} 
 
 void tonemap(inout vec3 color) {
 	color *= color;
@@ -86,6 +90,8 @@ void main() {
 	#ifdef BLOOM
 	applyBloom(finalColor);
 	#endif
+
+	lowLightAdapt(finalColor);
 
 	tonemap(finalColor);
 	dither(finalColor);
