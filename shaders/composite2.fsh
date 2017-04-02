@@ -4,6 +4,8 @@
 
 #include "/cfg/global.scfg"
 
+#define COMPOSITE 2
+
 #include "/cfg/volumelight.scfg"
 
 #define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
@@ -76,6 +78,8 @@ uniform sampler2D depthtex0, depthtex1;
 uniform sampler2DShadow shadowtex1;
 
 //--// Functions //--------------------------------------------------------------------------------------//
+
+#include "/lib/debug.glsl"
 
 #include "/lib/preprocess.glsl"
 #include "/lib/illuminance.glsl"
@@ -334,7 +338,8 @@ void main() {
 
 		vec4 trans = texture(colortex2, fragCoord);
 		composite = mix(composite, trans.rgb, trans.a);
-		return;
+
+		debugExit(); return;
 	}
 
 	surface.mat = getPackedMaterial(colortex0, fragCoord);
@@ -369,4 +374,6 @@ void main() {
 
 	vec4 trans = texture(colortex2, fragCoord);
 	composite = mix(composite, trans.rgb, trans.a);
+
+	debugExit();
 }

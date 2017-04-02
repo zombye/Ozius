@@ -4,6 +4,8 @@
 
 #include "/cfg/global.scfg"
 
+#define COMPOSITE 0
+
 #include "/cfg/globalIllumination.scfg"
 
 //--// Misc

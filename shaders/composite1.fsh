@@ -4,7 +4,7 @@
 
 #include "/cfg/global.scfg"
 
-#define COMPOSITE
+#define COMPOSITE 1
 
 #include "/cfg/hssrs.scfg"
 #include "/cfg/globalIllumination.scfg"
@@ -80,6 +80,8 @@ uniform sampler2D colortex4;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
+#include "/lib/debug.glsl"
+
 #include "/lib/preprocess.glsl"
 #include "/lib/illuminance.glsl"
 #include "/lib/time.glsl"
@@ -121,7 +123,9 @@ void main() {
 	surfaceStruct surface;
 
 	surface.depth.x = texture(depthtex1, fragCoord).r;
-	if (surface.depth.x == 1.0) return;
+	if (surface.depth.x == 1.0) { 
+		debugExit(); return;
+	}
 
 	surface.positionScreen = vec3(fragCoord, surface.depth.x);
 	surface.positionView   = screenSpaceToViewSpace(surface.positionScreen);
@@ -148,13 +152,13 @@ void main() {
 
 	composite = light.global + light.sky + light.block;
 
-	if (any(isnan(composite))) composite = vec3(0.0);
-	if (any(isinf(composite))) composite = vec3(0.0);
-	composite = max(composite, vec3(0.0));
-
 	#if REFLECTION_SAMPLES > 0
 	composite *= surface.mat.diffuse;
 	#else
 	composite *= mix(surface.mat.diffuse, vec3(1.0), surface.mat.specular);
 	#endif
+
+	if (any(isinf(composite) || isnan(composite))) composite = vec3(0.0);
+
+	debugExit();
 }
