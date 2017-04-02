@@ -4,6 +4,8 @@
 
 #include "/cfg/global.scfg"
 
+#define FINAL
+
 #include "/cfg/bloom.scfg"
 
 const bool colortex4MipmapEnabled = true;
@@ -22,18 +24,18 @@ in float avglum;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
+uniform sampler2D colortex4;
+
 #ifdef BLOOM
 uniform float viewWidth, viewHeight;
-#endif
-
-uniform sampler2D colortex4;
-#ifdef BLOOM
 uniform sampler2D colortex5;
 #endif
 
 uniform float blindness;
 
 //--// Functions //--------------------------------------------------------------------------------------//
+
+#include "/lib/debug.glsl"
 
 #include "/lib/preprocess.glsl"
 
@@ -46,7 +48,7 @@ void applyBloom(inout vec3 color) {
 	vec2 px = 1.0 / vec2(viewWidth, viewHeight);
 
 	vec3
-	bloom  = textureBicubic(colortex5, (fragCoord / exp2(1)) + vec2(0.00000           , 0.00000           )).rgb * 0.475;
+	bloom  = textureBicubic(colortex5, (fragCoord / exp2(1)) + vec2(0.00000           , 0.00000            )).rgb * 0.475;
 	bloom += textureBicubic(colortex5, (fragCoord / exp2(2)) + vec2(0.00000           , 0.50000 + px.y * 19)).rgb * 0.625;
 	bloom += textureBicubic(colortex5, (fragCoord / exp2(3)) + vec2(0.25000 + px.x * 2, 0.50000 + px.y * 19)).rgb * 0.750;
 	bloom += textureBicubic(colortex5, (fragCoord / exp2(4)) + vec2(0.25000 + px.x * 2, 0.62500 + px.y * 37)).rgb * 0.850;
@@ -95,4 +97,6 @@ void main() {
 
 	tonemap(finalColor);
 	dither(finalColor);
+
+	debugExit();
 }

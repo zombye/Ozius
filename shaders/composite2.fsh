@@ -6,7 +6,7 @@
 
 #define COMPOSITE 2
 
-#include "/cfg/volumelight.scfg"
+#include "/cfg/fog.scfg"
 
 #define REFLECTION_SAMPLES 1 // [0 1 2 4 8 16]
 #define REFLECTION_BOUNCES 1 // [1 2]
@@ -262,7 +262,7 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 
 //--//
 
-#ifdef VL
+#ifdef FOG
 float miePhase(float cosTheta) {
 	const float g  = 0.8;
 	const float gg = g * g;
@@ -276,15 +276,16 @@ float rayleighPhase(float cosTheta) {
 	return 0.75 * (cosTheta * cosTheta + 1.0);
 }
 
+#ifdef VL
 vec3 localSpaceToShadowSpace(vec3 localPos) {
 	vec3 shadowPos = (shadowProjection * shadowModelView * vec4(localPos, 1.0)).xyz;
 	return vec3(shadowPos.xy / (1.0 + length(shadowPos.xy)), shadowPos.z / 4.0);
 }
 
-vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
+void calculateVolumetricLight(vec3 viewVector, float linearDepth, out vec3 transmittance, out vec3 inscatter) {
 	float stepSize = (linearDepth / viewVector.z) / VL_STEPS;
 
-	mat2x3 coeffMatrix = mat2x3(vec3(5.8e-6, 1.35e-5, 3.31e-5), vec3(3e-6)) * VL_MULT;
+	mat2x3 coeffMatrix = mat2x3(vec3(5.8e-6, 1.35e-5, 3.31e-5), vec3(3e-6)) * FOG_MULT;
 
 	float VoL = dot(viewVector, world.globalLightVector);
 	coeffMatrix[0] *= rayleighPhase(VoL);
@@ -293,19 +294,34 @@ vec3 calculateVolumetricLight(vec3 color, vec3 viewVector, float linearDepth) {
 	vec3 increment = mat3(gbufferModelViewInverse) * viewVector * stepSize;
 	vec3 localPos = -increment * noise1(fragCoord) + gbufferModelViewInverse[3].xyz;
 
-	vec3 transmittance = vec3(1.0);
-	vec3 scattered     = vec3(0.0);
+	transmittance = vec3(1.0), inscatter = vec3(0.0);
 	for (uint i = 0; i < VL_STEPS; i++) {
 		localPos += increment;
 
 		vec2 odStep = exp(-(localPos.y + eyeAltitude) / vec2(8e3, 1.2e3)) * stepSize;
 		transmittance *= exp(coeffMatrix * -odStep);
 
-		scattered += (coeffMatrix * odStep) * transmittance * texture(shadowtex1, localSpaceToShadowSpace(localPos) * 0.5 + 0.5);
+		inscatter += (coeffMatrix * odStep) * transmittance * texture(shadowtex1, localSpaceToShadowSpace(localPos) * 0.5 + 0.5);
 	}
-	scattered *= world.globalLightColor;
+}
+#endif
 
-	return color * transmittance + scattered;
+vec3 calculateFog(vec3 color, vec3 viewVector, float linearDepth) {
+	vec3 transmittance = vec3(1.0), inscatter = vec3(0.0);
+
+	#ifdef VL
+	calculateVolumetricLight(viewVector, linearDepth, transmittance, inscatter);
+	#else
+	const mat2x3 scoeffs = mat2x3(vec3(5.8e-6, 1.35e-5, 3.31e-5), vec3(3e-6)) * FOG_MULT;
+	const vec3 acoeff = scoeffs[0] + scoeffs[1];
+	const vec3 scoeff = scoeffs[0] + scoeffs[1];
+	float dist = linearDepth / viewVector.z;
+	float VoL = dot(viewVector, world.globalLightVector);
+	transmittance = exp(-acoeff * dist);
+	inscatter     = scoeffs[0] * rayleighPhase(VoL) * (1.0 - exp(-acoeff * dist)) / acoeff;
+	#endif
+
+	return color * transmittance + inscatter * world.globalLightColor;
 }
 #endif
 
@@ -361,8 +377,8 @@ void main() {
 		composite = waterFog(composite, length(surface.positionView));
 	}
 
-	#ifdef VL
-	composite = calculateVolumetricLight(composite, normalize(surface.positionView), surface.positionView.z);
+	#ifdef FOG
+	composite = calculateFog(composite, normalize(surface.positionView), surface.positionView.z);
 	#endif
 
 	if (waterMask) composite /= 0.8; // Water needs some opacity to render, this hides the effects of that.

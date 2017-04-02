@@ -4,6 +4,8 @@
 
 #include "/cfg/global.scfg"
 
+#define COMPOSITE 3
+
 #include "/cfg/bloom.scfg"
 
 const bool colortex4MipmapEnabled = true;

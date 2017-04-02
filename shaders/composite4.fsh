@@ -4,6 +4,8 @@
 
 #include "/cfg/global.scfg"
 
+#define COMPOSITE 4
+
 #include "/cfg/bloom.scfg"
 
 //--// Outputs //----------------------------------------------------------------------------------------//
