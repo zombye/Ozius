@@ -13,7 +13,7 @@ layout (location = 8) in vec2 vertexUV;
 
 //--// Uniforms //---------------------------------------------------------------------------------------//
 
-uniform sampler2D colortex5;
+uniform sampler2D colortex4;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
@@ -23,5 +23,5 @@ void main() {
 
 	fragCoord = vertexUV;
 
-	avglum = dot(textureLod(colortex5, vec2(0.5), 100).rgb, vec3(1.0 / 3.0));
+	avglum = dot(textureLod(colortex4, vec2(0.5), 100).rgb, vec3(1.0 / 3.0));
 }

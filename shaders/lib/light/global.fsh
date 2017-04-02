@@ -130,7 +130,7 @@ float calculateShadows(
 
 #ifdef GI
 vec3 getGI(vec2 coord) {
-	return texture(colortex4, coord * GI_RESOLUTION).rgb;
+	return texture(colortex5, coord * GI_RESOLUTION).rgb;
 }
 #endif
 

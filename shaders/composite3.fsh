@@ -6,11 +6,11 @@
 
 #include "/cfg/bloom.scfg"
 
-const bool colortex5MipmapEnabled = true;
+const bool colortex4MipmapEnabled = true;
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS:4 */
+/* DRAWBUFFERS:5 */
 
 layout (location = 0) out vec4 bloom;
 
@@ -23,7 +23,7 @@ in vec2 fragCoord;
 #ifdef BLOOM
 uniform float viewWidth, viewHeight;
 
-uniform sampler2D colortex5;
+uniform sampler2D colortex4;
 #endif
 
 //--// Functions //--------------------------------------------------------------------------------------//
@@ -54,13 +54,13 @@ vec4 calculateBloomTiles() {
 	vec2 px = 1.0 / vec2(viewWidth, viewHeight);
 
 	vec4
-	bloom  = sampleBloom(colortex5, (fragCoord - vec2(0.000000           , 0.00000            )) * exp2(1), vec2(1.0, 0.0), 1);
-	bloom += sampleBloom(colortex5, (fragCoord - vec2(0.000000           , 0.50000 + px.y * 19)) * exp2(2), vec2(1.0, 0.0), 2);
-	bloom += sampleBloom(colortex5, (fragCoord - vec2(0.250000 + px.x * 2, 0.50000 + px.y * 19)) * exp2(3), vec2(1.0, 0.0), 3);
-	bloom += sampleBloom(colortex5, (fragCoord - vec2(0.250000 + px.x * 2, 0.62500 + px.y * 37)) * exp2(4), vec2(1.0, 0.0), 4);
-	bloom += sampleBloom(colortex5, (fragCoord - vec2(0.312500 + px.x * 4, 0.62500 + px.y * 37)) * exp2(5), vec2(1.0, 0.0), 5);
-	bloom += sampleBloom(colortex5, (fragCoord - vec2(0.312500 + px.x * 4, 0.65625 + px.y * 55)) * exp2(6), vec2(1.0, 0.0), 6);
-	bloom += sampleBloom(colortex5, (fragCoord - vec2(0.328125 + px.x * 6, 0.65625 + px.y * 55)) * exp2(7), vec2(1.0, 0.0), 7);
+	bloom  = sampleBloom(colortex4, (fragCoord - vec2(0.000000           , 0.00000            )) * exp2(1), vec2(1.0, 0.0), 1);
+	bloom += sampleBloom(colortex4, (fragCoord - vec2(0.000000           , 0.50000 + px.y * 19)) * exp2(2), vec2(1.0, 0.0), 2);
+	bloom += sampleBloom(colortex4, (fragCoord - vec2(0.250000 + px.x * 2, 0.50000 + px.y * 19)) * exp2(3), vec2(1.0, 0.0), 3);
+	bloom += sampleBloom(colortex4, (fragCoord - vec2(0.250000 + px.x * 2, 0.62500 + px.y * 37)) * exp2(4), vec2(1.0, 0.0), 4);
+	bloom += sampleBloom(colortex4, (fragCoord - vec2(0.312500 + px.x * 4, 0.62500 + px.y * 37)) * exp2(5), vec2(1.0, 0.0), 5);
+	bloom += sampleBloom(colortex4, (fragCoord - vec2(0.312500 + px.x * 4, 0.65625 + px.y * 55)) * exp2(6), vec2(1.0, 0.0), 6);
+	bloom += sampleBloom(colortex4, (fragCoord - vec2(0.328125 + px.x * 6, 0.65625 + px.y * 55)) * exp2(7), vec2(1.0, 0.0), 7);
 
 	return bloom;
 }

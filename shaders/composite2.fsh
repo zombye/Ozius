@@ -37,7 +37,7 @@ struct worldStruct {
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS:5 */
+/* DRAWBUFFERS:4 */
 
 layout (location = 0) out vec3 composite;
 
@@ -69,8 +69,7 @@ uniform mat4 shadowProjection, shadowModelView;
 uniform sampler2D colortex0, colortex1;
 uniform sampler2D colortex2; // Transparent surfaces
 uniform sampler2D colortex3; // Water
-
-uniform sampler2D colortex5; // Previous pass
+uniform sampler2D colortex4; // Previous pass
 uniform sampler2D colortex7; // Sky
 
 uniform sampler2D depthtex0, depthtex1;
@@ -169,7 +168,7 @@ vec3 calculateReflection(surfaceStruct surface) {
 			rayDir = reflect(rayDir, hitNormal);
 
 			if (raytraceIntersection(hitPos, rayDir, hitCoord, hitPos)) {
-				reflection += texture(colortex5, hitCoord.st).rgb * reflColor;
+				reflection += texture(colortex4, hitCoord.st).rgb * reflColor;
 			} else if (skyVis > 0) {
 				reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis * reflColor;
 				break;
@@ -217,7 +216,7 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 		vec3 hitCoord;
 		vec3 hitPos;
 		if (raytraceIntersection(viewPos, rayDir, hitCoord, hitPos)) {
-			reflection = texture(colortex5, hitCoord.xy).rgb;
+			reflection = texture(colortex4, hitCoord.xy).rgb;
 		} else if (skyVis > 0 && isEyeInWater == 0) {
 			reflection = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
 		}
@@ -244,7 +243,7 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 		if (hitCoord.z == 1.0) {
 			refraction = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy);
 		} else {
-			refraction = texture(colortex5, hitCoord.xy).rgb;
+			refraction = texture(colortex4, hitCoord.xy).rgb;
 		}
 
 		if (isEyeInWater == 0) {
@@ -343,7 +342,7 @@ void main() {
 	surface.normal     = getNormal(fragCoord);
 	surface.normalGeom = normalize(cross(dFdx(surface.positionView), dFdy(surface.positionView)));
 
-	composite = texture(colortex5, fragCoord).rgb;
+	composite = texture(colortex4, fragCoord).rgb;
 
 	bool waterMask = texture(colortex3, fragCoord).a > 0.0;
 

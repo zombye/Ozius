@@ -47,7 +47,7 @@ struct worldStruct {
 
 //--// Outputs //----------------------------------------------------------------------------------------//
 
-/* DRAWBUFFERS:5 */
+/* DRAWBUFFERS:4 */
 
 layout (location = 0) out vec3 composite;
 
@@ -75,7 +75,7 @@ uniform sampler2D depthtex1;
 uniform sampler2DShadow shadowtex1;
 
 #ifdef GI
-uniform sampler2D colortex4;
+uniform sampler2D colortex5;
 #endif
 
 //--// Functions //--------------------------------------------------------------------------------------//
