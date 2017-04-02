@@ -75,7 +75,7 @@ uniform sampler2DShadow shadowtex1;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
-#include "/lib/illuminance.glsl"
+#include "/lib/lightingConstants.glsl"
 #include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"

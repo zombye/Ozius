@@ -65,7 +65,6 @@ uniform sampler2D shadowcolor1;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
-#include "/lib/illuminance.glsl"
 
 #include "/lib/util/maxof.glsl"
 #include "/lib/util/noise.glsl"

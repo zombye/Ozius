@@ -83,7 +83,7 @@ uniform sampler2D colortex4;
 #include "/lib/debug.glsl"
 
 #include "/lib/preprocess.glsl"
-#include "/lib/illuminance.glsl"
+#include "/lib/lightingConstants.glsl"
 #include "/lib/time.glsl"
 
 #include "/lib/util/packing/normal.glsl"

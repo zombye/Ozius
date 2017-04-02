@@ -25,7 +25,7 @@ uniform mat4 gbufferModelViewInverse;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
-#include "/lib/illuminance.glsl"
+#include "/lib/lightingConstants.glsl"
 
 #include "/lib/util/maxof.glsl"
 
@@ -73,7 +73,7 @@ vec3 skyAtmosphere(vec3 viewDir) {
 	const uint jSteps = 2; // 2 is pretty much the minimum that's somewhat accurate
 
 	const vec3 sunLightCol  = vec3(ILLUMINANCE_SUN);
-	const vec3 moonLightCol = vec3(0.2);
+	const vec3 moonLightCol = vec3(ILLUMINANCE_MOON);
 
 	const float planetRadius = 6371e3;
 	const float atmosRadius  = planetRadius + 100e3;

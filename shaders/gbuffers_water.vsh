@@ -41,7 +41,7 @@ uniform mat4 gbufferProjection, gbufferModelViewInverse;
 
 //--// Functions //--------------------------------------------------------------------------------------//
 
-#include "/lib/illuminance.glsl"
+#include "/lib/lightingConstants.glsl"
 
 //--//
 
@@ -71,8 +71,8 @@ void main() {
 
 	//--// Fill world struct
 
-	world.globalLightVector = normalize(shadowLightPosition);
-	world.globalLightColor  = mix(vec3(0.2), vec3(ILLUMINANCE_SUN), sunAngle < 0.5);
+	world.globalLightVector = shadowLightPosition * 0.01;
+	world.globalLightColor  = mix(vec3(ILLUMINANCE_MOON), vec3(ILLUMINANCE_SUN), sunAngle < 0.5);
 
-	world.upVector = normalize(upPosition);
+	world.upVector = upPosition * 0.01;
 }

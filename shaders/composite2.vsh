@@ -28,7 +28,7 @@ uniform vec3 shadowLightPosition;
 //--// Functions //--------------------------------------------------------------------------------------//
 
 #include "/lib/preprocess.glsl"
-#include "/lib/illuminance.glsl"
+#include "/lib/lightingConstants.glsl"
 
 //--//
 
@@ -58,6 +58,6 @@ void main() {
 
 	//--// Fill world struct
 
-	world.globalLightVector = normalize(shadowLightPosition);
-	world.globalLightColor  = mix(vec3(0.2), vec3(ILLUMINANCE_SUN), sunAngle < 0.5) * calculateAtmosphereTransmittance(shadowAngle * TAU - (0.5 * PI));
+	world.globalLightVector = shadowLightPosition * 0.01;
+	world.globalLightColor  = mix(ILLUMINANCE_MOON, ILLUMINANCE_SUN, sunAngle < 0.5) * calculateAtmosphereTransmittance(shadowAngle * TAU - (0.5 * PI));
 }
