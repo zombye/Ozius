@@ -82,18 +82,13 @@ void calculateDisplacement(inout vec3 position) {
 
 	switch (int(vertexMetadata.x)) {
 		case 31:  // Tall grass and fern
-		case 37:  // Dandelion
-		case 38:  // Flowers
-		case 59:  // Wheat
-		case 141: // Carrots
-		case 142: // Potatoes
-		case 207: // Beetroots
+		case 37:  // Flowers
+		case 59:  // Crops
 			calculateWavingPlants(position, false); break;
 		case 175: // Double plants
 			calculateWavingPlants(position, true); break;
-		case 18:  // Leaves (Oak, Spruce, Birch, Jungle)
+		case 18:  // Leaves
 		case 106: // Vines (look better when treated as leaves here)
-		case 161: // Leaves 2 (Acacia, Dark Oak)
 			calculateWavingLeaves(position); break;
 		default: break;
 	}

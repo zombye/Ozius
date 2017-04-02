@@ -142,20 +142,16 @@ vec3 calculateGlobalLight(
 	#endif
 ) {
 	bool translucent =
-	   surface.mat.id == 18
-	|| surface.mat.id == 30
-	|| surface.mat.id == 31
-	|| surface.mat.id == 37
-	|| surface.mat.id == 38
-	|| surface.mat.id == 59
-	|| surface.mat.id == 83
-	|| surface.mat.id == 106
-	|| surface.mat.id == 111
-	|| surface.mat.id == 141
-	|| surface.mat.id == 142
-	|| surface.mat.id == 161
-	|| surface.mat.id == 175
-	|| surface.mat.id == 207;
+	   id ==  18 // Leaves
+	|| id ==  30 // Cobweb
+	|| id ==  31 // Tall grass and fern
+	|| id ==  37 // Flowers
+	|| id ==  59 // Crops
+	|| id ==  83 // Sugar canes
+	|| id == 106 // Vines
+	|| id == 111 // Lily pad
+	|| id == 175 // Double plants
+	;
 
 	vec3 diffuse;
 	if (translucent) {

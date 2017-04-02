@@ -138,20 +138,16 @@ void main() {
 		int id = int(unpackUnorm4x8(floatBitsToUint(texelFetch(colortex0, ivec2(gifc * textureSize(colortex0, 0)), 0).r)).a * 255.0);
 
 		bool translucent =
-		   id == 18
-		|| id == 30
-		|| id == 31
-		|| id == 37
-		|| id == 38
-		|| id == 59
-		|| id == 83
-		|| id == 106
-		|| id == 111
-		|| id == 141
-		|| id == 142
-		|| id == 161
-		|| id == 175
-		|| id == 207;
+		   id ==  18 // Leaves
+		|| id ==  30 // Cobweb
+		|| id ==  31 // Tall grass and fern
+		|| id ==  37 // Flowers
+		|| id ==  59 // Crops
+		|| id ==  83 // Sugar canes
+		|| id == 106 // Vines
+		|| id == 111 // Lily pad
+		|| id == 175 // Double plants
+		;
 
 		gi = calculateGI(viewSpaceToLocalSpace(screenSpaceToViewSpace(vec3(gifc, texture(depthtex1, gifc).r))), getNormal(gifc), translucent);
 	}
