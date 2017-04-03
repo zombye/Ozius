@@ -8,6 +8,8 @@
 #define   LUMINANCE_MOON 71.9168
 #define ILLUMINANCE_MOON 0.32
 
+#define LUMINANCE_STARS 100.0
+
 // Will be replaced at some point
 #define ILLUMINANCE_SKY  7e3
 

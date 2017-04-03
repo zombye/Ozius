@@ -115,11 +115,11 @@ vec3 skySun(vec3 viewVec, vec3 sunVec) {
 }
 
 vec3 getSky(vec3 dir) {
-	vec2 p = dir.xy * inversesqrt(dir.z * 8.0 + 8.0) * 2.0;
+	vec2 p = dir.xz * inversesqrt(dir.y * 8.0 + 8.0) * 2.0;
 	p /= maxof(abs(normalize(p)));
 
 	vec3 sky = texture(colortex7, p * 0.5 + 0.5).rgb;
-	sky += skySun(dir, normalize(mat3(gbufferModelViewInverse) * sunPosition).xzy);
+	sky += skySun(dir, mat3(gbufferModelViewInverse) * sunPosition * 0.01);
 
 	return sky;
 }
@@ -170,7 +170,7 @@ vec3 calculateReflection(surfaceStruct surface) {
 			if (raytraceIntersection(hitPos, rayDir, hitCoord, hitPos)) {
 				reflection += texture(colortex4, hitCoord.st).rgb * reflColor;
 			} else if (skyVis > 0) {
-				reflection += getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis * reflColor;
+				reflection += getSky(mat3(gbufferModelViewInverse) * rayDir) * skyVis * reflColor;
 				break;
 			}
 
@@ -187,8 +187,8 @@ vec3 calculateReflection(surfaceStruct surface) {
 //--//
 
 vec3 waterFog(vec3 col, float dist) {
-	const vec3 acoeff = vec3(4.00, 0.65, 0.45);
-	const vec3 scoeff = vec3(0.3, 2.7, 3.5) * 5e-3;
+	const vec3 acoeff = vec3(1.20, 0.65, 0.45);
+	const vec3 scoeff = vec3(5.4e-4, 1.5e-3, 3.1e-3);
 
 	vec3 transmittance = exp(-acoeff * dist);
 	vec3 scattered = scoeff * (1.0 - exp(-acoeff * dist)) / acoeff;
@@ -218,7 +218,7 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 		if (raytraceIntersection(viewPos, rayDir, hitCoord, hitPos)) {
 			reflection = texture(colortex4, hitCoord.xy).rgb;
 		} else if (skyVis > 0 && isEyeInWater == 0) {
-			reflection = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy) * skyVis;
+			reflection = getSky(mat3(gbufferModelViewInverse) * rayDir) * skyVis;
 		}
 
 		if (isEyeInWater == 1) {
@@ -241,7 +241,7 @@ vec3 calculateWaterShading(surfaceStruct surface) {
 		hitPos.z = linearizeDepth(hitCoord.z);
 
 		if (hitCoord.z == 1.0) {
-			refraction = getSky((mat3(gbufferModelViewInverse) * rayDir).xzy);
+			refraction = getSky(mat3(gbufferModelViewInverse) * rayDir);
 		} else {
 			refraction = texture(colortex4, hitCoord.xy).rgb;
 		}
@@ -340,7 +340,7 @@ void main() {
 		if (texture(colortex3, fragCoord).a > 0.0) {
 			composite = calculateWaterShading(surface);
 		} else {
-			composite = getSky(normalize(surface.positionLocal).xzy);
+			composite = texture(colortex4, fragCoord).rgb;
 
 			if (isEyeInWater == 1) {
 				composite = waterFog(composite, length(surface.positionView));

@@ -74,6 +74,7 @@ uniform sampler2D depthtex1;
 
 uniform sampler2DShadow shadowtex1;
 
+uniform sampler2D colortex4;
 #ifdef GI
 uniform sampler2D colortex5;
 #endif
@@ -123,7 +124,8 @@ void main() {
 	surfaceStruct surface;
 
 	surface.depth.x = texture(depthtex1, fragCoord).r;
-	if (surface.depth.x == 1.0) { 
+	if (surface.depth.x == 1.0) {
+		composite = texture(colortex4, fragCoord).rgb;
 		debugExit(); return;
 	}
 
