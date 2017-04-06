@@ -104,42 +104,62 @@ vec2 projectShadowSpace(vec2 pos) {
 #include "/lib/util/packing/normal.glsl"
 #include "/lib/composite/get/normal.fsh"
 
+//--//
+
+// I've added these defines for slightly improved clarity.
+// I've hard-coded the (inverse) projection into GI_GetDepth. It is technically faster, tough the difference is really negligible.
+#define GI_GetDepth(coord)  (textureLod(shadowtex0,   coord, GI_LOD_DEPTH).r * -1023.8 + 383.9)
+#define GI_GetNormal(coord) (textureLod(shadowcolor1, coord, GI_LOD_NORMAL).rgb * 2.0 - 1.0)
+#define GI_GetAlbedo(coord) (textureLod(shadowcolor0, coord, GI_LOD_ALBEDO).rgb)
+
 vec3 calculateGI(vec3 positionLocal, vec3 normal, bool translucent) {
 	const float stp = 0.5 * (GI_RADIUS / (sqrt(GI_SAMPLES) - 1.0));
-	vec2 noise = noise2(fragCoord) * stp - (0.5 * stp); // 4x slower for same sample count, but looks 10x better. difference decreases as sample count increases
+	vec2 noise = noise2(fragCoord) * stp - (0.5 * stp); // Using noise is slower, but also results in much better quality with fewer samples.
 
+	// Get base shadow-space position and normal.
 	vec3 shadowPos    = (shadowModelView * vec4(positionLocal, 1.0)).xyz;
 	vec3 shadowNormal = mat3(shadowModelView) * mat3(gbufferModelViewInverse) * normal;
 
 	vec3 result = vec3(0.0);
 
-	for (float x = -GI_RADIUS; x < GI_RADIUS; x += stp) {
-		for (float y = -GI_RADIUS; y <= GI_RADIUS; y += stp) {
-			vec2 offset = vec2(x, y) + noise;
+	// Start the loops.
+	// Apparently it's just a tad faster to add noise to the start & end points of the loops.
+	for (float x = -GI_RADIUS + noise.x; x < GI_RADIUS + noise.x; x += stp) {
+		for (float y = -GI_RADIUS + noise.y; y <= GI_RADIUS + noise.y; y += stp) {
+			vec2 offset = vec2(x, y);
 
+			// The first of these gives a HUGE performance boost, at no cost to quality.
+			// Second also helps a bit, since it discards anything that's too far away on the XY plane.
 			if (dot(shadowNormal.xy, offset) <= 0.0 || dot(offset, offset) > GI_RADIUS * GI_RADIUS) continue;
 
+			// Figure out where this sample is placed in shadow view space.
 			vec3 samplePos   = vec3(shadowPos.xy + offset, 0.0);
 			vec2 sampleCoord = projectShadowSpace(samplePos.xy) * 0.5 + 0.5;
-			samplePos.z = (textureLod(shadowtex0, sampleCoord, 2).r * 8.0 - 4.0) * shadowProjectionInverse[2].z + shadowProjectionInverse[3].z;
+			     samplePos.z = GI_GetDepth(sampleCoord);
 
+			// Diffs.
 			vec3 diffp = samplePos - shadowPos;
 			float diffd2 = dot(diffp, diffp);
 
-			float dm = 1.0 / (diffd2 + 1.0);
-			if (dm <= 1.0 / (GI_RADIUS * GI_RADIUS + 1.0)) continue;
+			// Decent performance boost from this. Discards any sample that's too far away along Z.
+			if (diffd2 > GI_RADIUS * GI_RADIUS) continue;
 
-			vec3 sampleNormal = textureLod(shadowcolor1, sampleCoord, 2).rgb * -2.0 + 1.0;
-			vec3 ams = max(vec3(inversesqrt(diffd2) * diffp * mat2x3(shadowNormal, sampleNormal), -sampleNormal.z), 0.0);
+			// Get the normal at this offset.
+			vec3 sampleNormal = GI_GetNormal(sampleCoord);
+
+			// Angle-based multiplier.
+			vec3 ams = max(vec3(inversesqrt(diffd2) * diffp * mat2x3(shadowNormal, -sampleNormal), sampleNormal.z), 0.0);
 			float am = mix(ams.x * ams.y, 1.0, translucent) * ams.z;
+
+			// Decent performance boost as it discards any samples that have normals pointing away from each other.
 			if (am <= 0.0) continue;
 
-			result += textureLod(shadowcolor0, sampleCoord, 5).rgb * am * dm;
+			// Add to the result the found albedo scaled based on angle and distance.
+			result += GI_GetAlbedo(sampleCoord) * am / (diffd2 + 1.0);
 		}
 	}
-	result /= PI;
 
-	return result / (GI_SAMPLES / GI_RADIUS);
+	return result * ((GI_RADIUS / GI_SAMPLES) / PI);
 }
 
 //--//
