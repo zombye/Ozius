@@ -66,10 +66,12 @@ uniform vec3 shadowLightPosition;
 uniform vec3 cameraPosition;
 
 uniform mat4 shadowModelView, shadowProjection;
+uniform mat4 shadowProjectionInverse;
 
 uniform sampler2D base, specular;
 uniform sampler2D normals;
 
+uniform sampler2D shadowtex0;
 uniform sampler2DShadow shadowtex1;
 
 //--// Functions //--------------------------------------------------------------------------------------//

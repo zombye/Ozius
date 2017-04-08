@@ -85,6 +85,7 @@ uniform sampler2D colortex4;
 
 //--//
 
+#ifdef GI
 vec3 screenSpaceToViewSpace(vec3 screenSpace) {
 	vec4 viewSpace = gbufferProjectionInverse * vec4(screenSpace * 2.0 - 1.0, 1.0);
 	return viewSpace.xyz / viewSpace.w;
@@ -161,6 +162,7 @@ vec3 calculateGI(vec3 positionLocal, vec3 normal, bool translucent) {
 
 	return result * ((GI_RADIUS / GI_SAMPLES) / PI);
 }
+#endif
 
 //--//
 

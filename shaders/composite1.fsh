@@ -68,10 +68,12 @@ uniform vec3 shadowLightPosition;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse, gbufferModelViewInverse;
 uniform mat4 shadowProjection, shadowModelView;
+uniform mat4 shadowProjectionInverse;
 
 uniform sampler2D colortex0, colortex1;
 uniform sampler2D depthtex1;
 
+uniform sampler2D shadowtex0;
 uniform sampler2DShadow shadowtex1;
 
 uniform sampler2D colortex4;
