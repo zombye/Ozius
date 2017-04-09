@@ -67,11 +67,11 @@ float sampleShadowsSoft(vec3 coord) {
 }
 #elif SHADOW_SAMPLING_TYPE == 2
 float calculatePCSSSpread(
-	float angle,     // Angular size of the light, in radians.
-	float mapRadius, // Radius of the shadow map.
-	float mapDepth   // Depth of the shadow map.
+	float angle,       // Angular radius of the light, in radians.
+	float mapDiameter, // Diameter of the shadow map.
+	float mapDepth     // Depth of the shadow map.
 ) {
-	return (tan(angle) * mapDepth) / (2.0 * mapRadius);
+	return tan(angle) * mapDepth / mapDiameter;
 }
 
 float sampleShadowsPCSS(vec3 coord, float distortionScale) {
@@ -120,11 +120,11 @@ float sampleShadowsPCSS(vec3 coord, float distortionScale) {
 	// Shadow map properties
 
 	float mapRadius = shadowProjectionInverse[1].y;
-	float mapDepth  = shadowProjectionInverse[2].z * -2.0;
+	float mapDepth  = shadowProjectionInverse[2].z * -8.0;
 	int mapResolution = textureSize(shadowtex0, 0).x;
 
 	// Calculate spread
-	float spread = calculatePCSSSpread(radians(0.5), mapRadius, mapDepth) / distortionScale;
+	float spread = calculatePCSSSpread(radians(0.25), 2.0 * mapRadius, mapDepth) / distortionScale;
 
 	// Noise
 	float noiseAngle = noise1(gl_FragCoord.st) * TAU;
@@ -140,7 +140,7 @@ float sampleShadowsPCSS(vec3 coord, float distortionScale) {
 
 		depthAverage += sumof(max(vec4(0.0), coord.z - depthSamples));
 	}
-	depthAverage /= offset.length();
+	depthAverage /= offset.length() * 4;
 
 	float penumbraSize = max(depthAverage * spread, 1.0 / mapResolution);
 
