@@ -295,7 +295,10 @@ void skyAtmosphere(vec3 viewDir, out vec3 inscattered, out vec3 transmittance) {
 
 	//--//
 
-	if (viewDir.y < -0.2) return;
+	if (viewDir.y < -0.2) {
+		inscattered = vec3(0.0); transmittance = vec3(0.0);
+		return;
+	}
 
 	vec3 pos = vec3(0.0, planetRadius + eyeAltitude, 0.0);
 
